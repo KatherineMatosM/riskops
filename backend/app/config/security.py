@@ -1,0 +1,8 @@
+class RoleName:
+    ADMIN = "ADMIN"
+    RISK_MANAGER = "RISK_MANAGER"
+    ANALYST = "ANALYST"
+    VIEWER = "VIEWER"
+
+
+ALL_ROLES = [RoleName.ADMIN, RoleName.RISK_MANAGER, RoleName.ANALYST, RoleName.VIEWER]
