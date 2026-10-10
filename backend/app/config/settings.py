@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:3000"
 
-    ADMIN_EMAIL: str = "admin@riskops.local"
+    ADMIN_EMAIL: str = "admin@riskops.com"
     ADMIN_PASSWORD: str = "Admin123!"
     ADMIN_FULL_NAME: str = "System Administrator"
 
