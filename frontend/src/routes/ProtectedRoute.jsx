@@ -1,16 +1,12 @@
 import { Navigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import LoadingState from "../components/common/LoadingState";
 import { useAuth } from "../hooks/useAuth";
 
 export function ProtectedRoute({ children, roles }) {
   const { user, loading, hasRole } = useAuth();
 
   if (loading) {
-    return (
-      <div className="page-loading">
-        <Loader2 size={20} className="spin" /> Cargando...
-      </div>
-    );
+    return <LoadingState variant="shell" label="Cargando RiskOps..." />;
   }
 
   if (!user) {

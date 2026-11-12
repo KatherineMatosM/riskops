@@ -9,9 +9,11 @@ export function useDashboard() {
   const [trend, setTrend] = useState([]);
   const [mitigationsByStatus, setMitigationsByStatus] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
       const [summaryData, levelData, categoryData, statusData, trendData, mitigationData] = await Promise.all([
         dashboardService.getSummary(),
@@ -27,6 +29,8 @@ export function useDashboard() {
       setByStatus(statusData);
       setTrend(trendData);
       setMitigationsByStatus(mitigationData);
+    } catch (err) {
+      setError(err.response?.data?.detail || "No se pudo cargar el resumen de riesgos. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -36,5 +40,5 @@ export function useDashboard() {
     fetchAll();
   }, [fetchAll]);
 
-  return { summary, byLevel, byCategory, byStatus, trend, mitigationsByStatus, loading, refresh: fetchAll };
+  return { summary, byLevel, byCategory, byStatus, trend, mitigationsByStatus, loading, error, refresh: fetchAll };
 }

@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Pencil } from "lucide-react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { Pencil, ShieldAlert, BarChart3, Crosshair, ArrowLeft, ClipboardCheck, History, Loader2 } from "lucide-react";
 import * as riskService from "../services/riskService";
 import * as evaluationService from "../services/evaluationService";
 import { useMitigations } from "../hooks/useMitigations";
 import { useAuth } from "../hooks/useAuth";
 import Card from "../components/common/Card";
 import LoadingState from "../components/common/LoadingState";
+import ErrorState from "../components/common/ErrorState";
+import Alert from "../components/common/Alert";
+import PageHeader from "../components/common/PageHeader";
+import EmptyState from "../components/common/EmptyState";
+import StatCard from "../components/dashboard/StatCard";
 import MitigationPlanTable from "../components/mitigations/MitigationPlanTable";
 import { riskLevelColor, riskLevelLabel } from "../utils/riskLevelHelper";
 import { formatStatus, formatDateTime } from "../utils/formatters";
@@ -21,15 +26,24 @@ export default function RiskDetail() {
   const [probability, setProbability] = useState("");
   const [impact, setImpact] = useState("");
   const [observations, setObservations] = useState("");
-  const { plans } = useMitigations(riskId);
+  const [loadError, setLoadError] = useState(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [evaluationError, setEvaluationError] = useState(null);
+  const [evaluationSuccess, setEvaluationSuccess] = useState(null);
+  const { plans, loading: plansLoading } = useMitigations(riskId);
 
   const loadData = useCallback(async () => {
-    const [riskData, evaluationData] = await Promise.all([
-      riskService.getRisk(riskId),
-      evaluationService.listEvaluations(riskId),
-    ]);
-    setRisk(riskData);
-    setEvaluations(evaluationData);
+    setLoadError(null);
+    try {
+      const [riskData, evaluationData] = await Promise.all([
+        riskService.getRisk(riskId),
+        evaluationService.listEvaluations(riskId),
+      ]);
+      setRisk(riskData);
+      setEvaluations(evaluationData);
+    } catch {
+      setLoadError("No se pudo cargar el detalle y las evaluaciones del riesgo.");
+    }
   }, [riskId]);
 
   useEffect(() => {
@@ -38,85 +52,104 @@ export default function RiskDetail() {
 
   async function handleEvaluate(e) {
     e.preventDefault();
-    await evaluationService.evaluateRisk(riskId, {
-      probability: Number(probability), impact: Number(impact), observations: observations || null,
-    });
-    setProbability("");
-    setImpact("");
-    setObservations("");
-    loadData();
+    setEvaluating(true);
+    setEvaluationError(null);
+    setEvaluationSuccess(null);
+    try {
+      await evaluationService.evaluateRisk(riskId, {
+        probability: Number(probability), impact: Number(impact), observations: observations || null,
+      });
+      setProbability("");
+      setImpact("");
+      setObservations("");
+      setEvaluationSuccess("La evaluación se registró correctamente.");
+      loadData();
+    } catch (err) {
+      setEvaluationError(err.response?.data?.message || "No se pudo registrar la evaluación. Inténtalo de nuevo.");
+    } finally {
+      setEvaluating(false);
+    }
   }
 
-  if (!risk) return <LoadingState />;
+  if (loadError) return <ErrorState message={loadError} />;
+  if (!risk) return <LoadingState variant="detail" />;
 
   const canManage = hasRole(ROLES.ADMIN, ROLES.RISK_MANAGER, ROLES.ANALYST);
 
   return (
     <div className="risk-detail-page">
-      <div className="page-header">
-        <h2>{risk.title}</h2>
-        {canManage && (
+      <Link className="back-link" to="/risks"><ArrowLeft size={16} />Volver a riesgos</Link>
+      <PageHeader
+        icon={ShieldAlert}
+        title={risk.title}
+        description="Consulta la información, las evaluaciones y los planes de mitigación del riesgo."
+        actions={canManage && (
           <button className="secondary-button button-with-icon" onClick={() => navigate(`/risks/${riskId}/edit`)}>
-            <Pencil size={15} /> Editar
+            <Pencil size={17} /> Editar riesgo
           </button>
         )}
+      />
+      <div className="stats-grid">
+        <StatCard icon={ShieldAlert} label="Puntuación del riesgo" value={risk.risk_score ?? "—"} />
+        <StatCard icon={BarChart3} label="Probabilidad" value={risk.probability ?? "—"} />
+        <StatCard icon={Crosshair} label="Impacto" value={risk.impact ?? "—"} />
       </div>
 
-      <Card title="Detalle">
-        <p>{risk.description || "Sin descripcion."}</p>
-        <p>Estado: {formatStatus(risk.status)}</p>
-        <p>
-          Nivel:{" "}
-          <span className="risk-level-badge" style={{ backgroundColor: riskLevelColor(risk.risk_level) }}>
-            {riskLevelLabel(risk.risk_level)}
-          </span>
-        </p>
-        <p>Puntuacion: {risk.risk_score ?? "-"}</p>
-      </Card>
+      <div className="detail-grid">
+        <Card title="Información del riesgo">
+          <p className="detail-description">{risk.description || "Este riesgo no tiene una descripción registrada."}</p>
+          <dl className="detail-metadata">
+            <div><dt>Estado actual</dt><dd><span className={`status-badge status-${risk.status?.toLowerCase()}`}>{formatStatus(risk.status)}</span></dd></div>
+            <div><dt>Nivel de riesgo</dt><dd><span className="risk-level-badge" style={{ backgroundColor: riskLevelColor(risk.risk_level) }}>{riskLevelLabel(risk.risk_level)}</span></dd></div>
+          </dl>
+        </Card>
+        <Card title="Historial de evaluaciones">
+          {evaluations.length === 0 ? (
+            <EmptyState icon={History} message="Este riesgo aún no ha sido evaluado." />
+          ) : (
+            <ul className="evaluation-list">
+              {evaluations.map((ev) => (
+                <li className="evaluation-entry" key={ev.id}>
+                  <div className="evaluation-entry-header"><time>{formatDateTime(ev.evaluation_date)}</time><span className="risk-level-badge" style={{ backgroundColor: riskLevelColor(ev.risk_level) }}>{riskLevelLabel(ev.risk_level)}</span></div>
+                  <p>Probabilidad <strong>{ev.probability}</strong><span aria-hidden="true"> · </span>Impacto <strong>{ev.impact}</strong></p>
+                  {ev.observations && <p className="text-muted">{ev.observations}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
 
       {canManage && (
-        <Card title="Evaluar riesgo">
-          <form className="app-form inline-form" onSubmit={handleEvaluate}>
+        <Card title="Registrar una evaluación">
+          <Alert type="error" message={evaluationError} />
+          <Alert type="success" message={evaluationSuccess} />
+          <form className="app-form inline-form" onSubmit={handleEvaluate} aria-busy={evaluating}>
             <label>
               Probabilidad
               <select value={probability} onChange={(e) => setProbability(e.target.value)} required>
-                <option value="">-</option>
+                <option value="">Selecciona</option>
                 {SCALE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
             <label>
               Impacto
               <select value={impact} onChange={(e) => setImpact(e.target.value)} required>
-                <option value="">-</option>
+                <option value="">Selecciona</option>
                 {SCALE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
             <label>
               Observaciones
-              <input value={observations} onChange={(e) => setObservations(e.target.value)} />
+              <input placeholder="Añade un contexto para esta evaluación" value={observations} onChange={(e) => setObservations(e.target.value)} />
             </label>
-            <button type="submit" className="primary-button">Registrar evaluacion</button>
+            <button type="submit" className="primary-button button-with-icon" disabled={evaluating}>{evaluating ? <Loader2 size={18} className="spin" /> : <ClipboardCheck size={18} />}{evaluating ? "Registrando..." : "Registrar evaluación"}</button>
           </form>
         </Card>
       )}
 
-      <Card title="Historial de evaluaciones">
-        {evaluations.length === 0 ? (
-          <p className="empty-state">Este riesgo aun no ha sido evaluado.</p>
-        ) : (
-          <ul className="evaluation-list">
-            {evaluations.map((ev) => (
-              <li key={ev.id}>
-                {formatDateTime(ev.evaluation_date)} — Probabilidad {ev.probability}, Impacto {ev.impact},
-                Nivel {riskLevelLabel(ev.risk_level)}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
       <Card
-        title="Planes de mitigacion"
+        title="Planes de mitigación"
         actions={
           canManage && (
             <button className="link-button" onClick={() => navigate(`/mitigations?risk_id=${riskId}`)}>
@@ -125,8 +158,8 @@ export default function RiskDetail() {
           )
         }
       >
-        {plans.length === 0 ? (
-          <p className="empty-state">No hay planes de mitigacion para este riesgo.</p>
+        {plansLoading ? <LoadingState variant="table" rows={3} columns={4} /> : plans.length === 0 ? (
+          <EmptyState message="No hay planes de mitigación asociados a este riesgo." />
         ) : (
           <MitigationPlanTable plans={plans} onSelect={() => navigate(`/mitigations?risk_id=${riskId}`)} />
         )}

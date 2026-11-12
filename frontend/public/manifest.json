@@ -1,9 +1,9 @@
 {
   "short_name": "RiskOps",
-  "name": "RiskOps - Gestion de Riesgos Operacionales",
-  "icons": [],
+  "name": "RiskOps - Gestión de Riesgos Operacionales",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#1a237e",
-  "background_color": "#ffffff"
+  "theme_color": "#082453",
+  "background_color": "#f2f5fb"
 }

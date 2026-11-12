@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, LogIn } from "lucide-react";
+import { AlertCircle, Loader2, LockKeyhole, LogIn, Mail } from "lucide-react";
+import PasswordInput from "../components/common/PasswordInput";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Login() {
@@ -26,25 +27,31 @@ export default function Login() {
   }
 
   return (
-    <form className="app-form" onSubmit={handleSubmit}>
+    <form className="app-form login-form" onSubmit={handleSubmit} aria-busy={loading}>
+      <div className="login-heading">
+        <span className="eyebrow">BIENVENIDO A RISKOPS</span>
+        <h1>Iniciar sesión</h1>
+        <p>Accede a tu cuenta para gestionar los riesgos de tu organización.</p>
+      </div>
       {error && (
-        <div className="alert alert-error">
+        <div className="alert alert-error" role="alert">
           <AlertCircle size={16} />
           <span>{error}</span>
         </div>
       )}
       <label>
-        Correo electronico
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        Correo electrónico
+        <span className="input-with-icon"><Mail size={18} aria-hidden="true" /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@empresa.com" autoComplete="username" required /></span>
       </label>
       <label>
-        Contrasena
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        Contraseña
+          <PasswordInput icon={LockKeyhole} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ingresa tu contraseña" autoComplete="current-password" required />
       </label>
       <button type="submit" className="primary-button button-with-icon" disabled={loading}>
-        <LogIn size={16} />
+        {loading ? <Loader2 size={18} className="spin" /> : <LogIn size={18} />}
         {loading ? "Ingresando..." : "Ingresar"}
       </button>
+      <p className="login-security"><LockKeyhole size={14} aria-hidden="true" /> Acceso seguro a tu espacio de trabajo</p>
     </form>
   );
 }
