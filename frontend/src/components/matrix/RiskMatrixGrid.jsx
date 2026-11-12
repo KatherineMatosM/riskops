@@ -23,14 +23,18 @@ export default function RiskMatrixGrid({ cells }) {
           {[1, 2, 3, 4, 5].map((impact) => {
             const cell = grid[`${probability}-${impact}`];
             return (
-              <div
+              <button
+                type="button"
                 key={impact}
                 className="risk-matrix-cell"
                 style={{ backgroundColor: cellColor(probability, impact) }}
+                disabled={!cell?.count}
+                aria-label={`Probabilidad ${probability}, impacto ${impact}: ${cell?.count || 0} riesgos`}
+                title={`Probabilidad ${probability} · Impacto ${impact} · ${cell?.count || 0} riesgos`}
                 onClick={() => cell?.count > 0 && navigate(`/risks?probability=${probability}&impact=${impact}`)}
               >
                 <strong>{cell?.count || 0}</strong>
-              </div>
+              </button>
             );
           })}
         </div>

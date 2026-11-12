@@ -6,12 +6,16 @@ export const NotificationContext = createContext(null);
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await notificationService.listNotifications();
       setNotifications(data);
+    } catch (err) {
+      setError(err.response?.data?.message || "No se pudieron cargar las notificaciones.");
     } finally {
       setLoading(false);
     }
@@ -32,7 +36,7 @@ export function NotificationProvider({ children }) {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <NotificationContext.Provider value={{ notifications, loading, refresh, markRead, unreadCount }}>
+    <NotificationContext.Provider value={{ notifications, loading, error, refresh, markRead, unreadCount }}>
       {children}
     </NotificationContext.Provider>
   );

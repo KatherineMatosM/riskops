@@ -1,10 +1,29 @@
-import { Loader2 } from "lucide-react";
+import {
+  AnalyticsSkeleton, DashboardSkeleton, DetailSkeleton, FormSkeleton,
+  ListSkeleton, MatrixSkeleton, MitigationsSkeleton, ShellSkeleton,
+  TableSkeleton, UsersSkeleton,
+} from "./SkeletonLayouts";
 
-export default function LoadingState({ label = "Cargando..." }) {
+const LAYOUTS = {
+  analytics: AnalyticsSkeleton,
+  dashboard: DashboardSkeleton,
+  detail: DetailSkeleton,
+  form: FormSkeleton,
+  list: ListSkeleton,
+  matrix: MatrixSkeleton,
+  mitigations: MitigationsSkeleton,
+  shell: ShellSkeleton,
+  table: TableSkeleton,
+  users: UsersSkeleton,
+};
+
+export default function LoadingState({ label = "Cargando información...", variant = "table", rows, columns }) {
+  const Layout = LAYOUTS[variant] || TableSkeleton;
+
   return (
-    <div className="state-message">
-      <Loader2 size={22} className="spin" />
-      <span>{label}</span>
+    <div className={`loading-state skeleton-state skeleton-state-${variant}`} role="status" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" aria-busy="true"><Layout rows={rows} columns={columns} /></div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { CircleCheck, CircleDashed, CircleDot, CircleX } from "lucide-react";
 import { formatDate, formatStatus } from "../../utils/formatters";
+import EmptyState from "../common/EmptyState";
 
 const STATUS_ICON = {
   PENDING: CircleDashed,
@@ -10,7 +11,7 @@ const STATUS_ICON = {
 
 export default function MitigationActionList({ actions }) {
   if (!actions.length) {
-    return <p className="empty-state">Este plan no tiene acciones registradas.</p>;
+    return <EmptyState message="Este plan no tiene acciones registradas." />;
   }
 
   return (
@@ -19,15 +20,15 @@ export default function MitigationActionList({ actions }) {
         const Icon = STATUS_ICON[action.status] || CircleDashed;
         return (
           <li key={action.id} className="action-list-item">
-            <div style={{ display: "flex", gap: "0.6rem" }}>
-              <Icon size={16} style={{ marginTop: "0.2rem" }} />
+            <div className="action-list-main">
+              <Icon size={20} className="action-status-icon" />
               <div>
                 <strong>{action.title}</strong>
                 <p>{action.description}</p>
               </div>
             </div>
             <div className="action-list-meta">
-              <span>{formatStatus(action.status)}</span>
+              <span className={`status-badge status-${action.status.toLowerCase()}`}>{formatStatus(action.status)}</span>
               <span>Vence: {formatDate(action.due_date)}</span>
             </div>
           </li>

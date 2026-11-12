@@ -3,9 +3,10 @@ import { Search } from "lucide-react";
 export default function SearchInput({ value, onChange, placeholder = "Buscar..." }) {
   return (
     <div className="search-input-wrap">
-      <Search size={15} />
+      <Search size={19} aria-hidden="true" />
       <input
-        type="text"
+        type="search"
+        aria-label={placeholder}
         className="search-input"
         value={value}
         placeholder={placeholder}

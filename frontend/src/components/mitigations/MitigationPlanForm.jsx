@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2, Plus } from "lucide-react";
 
 export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Crear plan" }) {
   const [values, setValues] = useState({
     title: "", description: "", responsible_user_id: "", start_date: "", due_date: "",
   });
   const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   function update(field, value) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -18,6 +19,7 @@ export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Cre
       setError("Todos los campos, excepto la descripcion, son obligatorios.");
       return;
     }
+    setSubmitting(true);
     try {
       await onSubmit({
         title: values.title,
@@ -29,26 +31,28 @@ export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Cre
       setValues({ title: "", description: "", responsible_user_id: "", start_date: "", due_date: "" });
     } catch (err) {
       setError(err.response?.data?.message || "No se pudo crear el plan de mitigacion.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
-    <form className="app-form" onSubmit={handleSubmit}>
+    <form className="app-form mitigation-plan-form" onSubmit={handleSubmit} aria-busy={submitting}>
       {error && (
-        <div className="alert alert-error">
+        <div className="alert alert-error" role="alert">
           <AlertCircle size={16} />
           <span>{error}</span>
         </div>
       )}
 
       <label>
-        Titulo
-        <input value={values.title} onChange={(e) => update("title", e.target.value)} />
+        Título
+        <input value={values.title} onChange={(e) => update("title", e.target.value)} placeholder="Nombre del plan de mitigación" />
       </label>
 
       <label>
-        Descripcion
-        <textarea value={values.description} onChange={(e) => update("description", e.target.value)} />
+        Descripción
+        <textarea value={values.description} onChange={(e) => update("description", e.target.value)} placeholder="Describe las medidas que se implementarán" rows={3} />
       </label>
 
       <label>
@@ -67,12 +71,12 @@ export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Cre
           <input type="date" value={values.start_date} onChange={(e) => update("start_date", e.target.value)} />
         </label>
         <label>
-          Fecha limite
+          Fecha límite
           <input type="date" value={values.due_date} onChange={(e) => update("due_date", e.target.value)} />
         </label>
       </div>
 
-      <button type="submit" className="primary-button">{submitLabel}</button>
+      <div className="form-actions"><button type="submit" className="primary-button button-with-icon" disabled={submitting}>{submitting ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}{submitting ? "Guardando..." : submitLabel}</button></div>
     </form>
   );
 }

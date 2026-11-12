@@ -1,9 +1,9 @@
 import { Inbox } from "lucide-react";
 
-export default function EmptyState({ message = "No hay datos para mostrar." }) {
+export default function EmptyState({ message = "No hay datos para mostrar.", icon: Icon = Inbox }) {
   return (
     <div className="state-message">
-      <Inbox size={22} />
+      <span className="state-icon"><Icon size={28} aria-hidden="true" /></span>
       <span>{message}</span>
     </div>
   );
