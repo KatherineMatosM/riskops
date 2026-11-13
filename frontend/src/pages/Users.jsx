@@ -6,10 +6,13 @@ import Modal from "../components/common/Modal";
 import Card from "../components/common/Card";
 import PageHeader from "../components/common/PageHeader";
 import PasswordInput from "../components/common/PasswordInput";
+import FieldError from "../components/common/FieldError";
+import { getValidationMessage } from "../utils/formValidation";
 import StatCard from "../components/dashboard/StatCard";
 import LoadingState from "../components/common/LoadingState";
 import ErrorState from "../components/common/ErrorState";
 import { ROLES } from "../utils/constants";
+import { formatRole } from "../utils/formatters";
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -19,6 +22,7 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   async function loadUsers() {
     setLoading(true);
@@ -39,6 +43,12 @@ export default function Users() {
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+  }
+
+  function handleInvalid(event) {
+    const input = event.target;
+    setFieldErrors((current) => ({ ...current, [input.name]: getValidationMessage(input) }));
   }
 
   function toggleRole(role) {
@@ -51,6 +61,7 @@ export default function Users() {
   async function handleCreate(e) {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     setCreating(true);
     try {
       await userService.createUser(form);
@@ -67,13 +78,13 @@ export default function Users() {
   const columns = [
     { key: "full_name", label: "Nombre", render: (row) => <div className="user-cell"><span className="user-avatar">{row.full_name?.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase()}</span><strong>{row.full_name}</strong></div> },
     { key: "email", label: "Correo" },
-    { key: "roles", label: "Roles", render: (row) => <div className="role-badges">{row.roles.map((role) => <span className="role-badge" key={role}>{role === ROLES.ADMIN && <Crown size={14} />}{role}</span>)}</div> },
+    { key: "roles", label: "Roles", render: (row) => <div className="role-badges">{row.roles.map((role) => <span className="role-badge" key={role}>{role === ROLES.ADMIN && <Crown size={14} />}{formatRole(role)}</span>)}</div> },
     { key: "is_active", label: "Estado", render: (row) => <span className={`status-badge ${row.is_active ? "status-success" : "status-muted"}`}>{row.is_active ? <CheckCircle2 size={14} /> : <XCircle size={14} />}{row.is_active ? "Activo" : "Inactivo"}</span> },
   ];
 
   return (
     <div className="users-page">
-      <PageHeader icon={UsersIcon} title="Usuarios" description="Administra las cuentas, los roles y los permisos del sistema." actions={<button className="primary-button button-with-icon" onClick={() => { setError(null); setShowModal(true); }}><UserPlus size={18} /> Nuevo usuario</button>} />
+      <PageHeader icon={UsersIcon} title="Usuarios" description="Administra las cuentas, los roles y los permisos del sistema." actions={<button className="primary-button button-with-icon" onClick={() => { setError(null); setFieldErrors({}); setShowModal(true); }}><UserPlus size={18} /> Nuevo usuario</button>} />
       {loading ? <LoadingState variant="users" label="Cargando usuarios..." /> : loadError ? <Card><ErrorState message={loadError} /><button type="button" className="secondary-button" onClick={loadUsers}>Reintentar</button></Card> : <>
         <div className="stats-grid">
           <StatCard icon={UsersIcon} label="Total usuarios" value={users.length} />
@@ -83,26 +94,26 @@ export default function Users() {
         <Card title="Directorio de usuarios" description="Cuentas con acceso a RiskOps."><Table columns={columns} data={users} emptyMessage="Todavía no hay usuarios registrados." /></Card>
       </>}
       <Modal open={showModal} title="Nuevo usuario" icon={UserPlus} description="Crea una nueva cuenta y asigna sus permisos." onClose={() => setShowModal(false)}>
-        <form className="app-form" onSubmit={handleCreate} aria-busy={creating}>
+        <form className="app-form" onSubmit={handleCreate} onInvalid={handleInvalid} aria-busy={creating}>
           {error && <div className="alert alert-error" role="alert"><span>{error}</span></div>}
-          <label>
+          <div className="form-field"><label htmlFor="new-user-full-name">
             Nombre completo
-            <input value={form.full_name} onChange={(e) => update("full_name", e.target.value)} placeholder="Nombre y apellido" autoComplete="name" required />
-          </label>
-          <label>
+            <input id="new-user-full-name" name="full_name" value={form.full_name} onChange={(e) => update("full_name", e.target.value)} placeholder="Nombre y apellido" autoComplete="name" aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "new-user-full-name-error" : undefined} required />
+          </label><FieldError id="new-user-full-name-error">{fieldErrors.full_name}</FieldError></div>
+          <div className="form-field"><label htmlFor="new-user-email">
             Correo electrónico
-            <input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="nombre@empresa.com" autoComplete="email" required />
-          </label>
-          <label>
+            <input id="new-user-email" name="email" type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="nombre@empresa.com" autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "new-user-email-error" : undefined} required />
+          </label><FieldError id="new-user-email-error">{fieldErrors.email}</FieldError></div>
+          <div className="form-field"><label htmlFor="new-user-password">
             Contraseña
-            <PasswordInput value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" required />
-          </label>
+            <PasswordInput id="new-user-password" name="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "new-user-password-error" : undefined} required />
+          </label><FieldError id="new-user-password-error">{fieldErrors.password}</FieldError></div>
           <div className="security-tip"><ShieldCheck size={24} /><p><strong>Roles y permisos</strong>Selecciona uno o más roles para el usuario.</p></div>
           <div className="checkbox-group role-options" role="group" aria-label="Roles y permisos">
             {Object.values(ROLES).map((role) => (
               <label key={role} className={`checkbox-label role-option${form.roles.includes(role) ? " selected" : ""}`}>
                 <input type="checkbox" checked={form.roles.includes(role)} onChange={() => toggleRole(role)} />
-                {role}
+                {formatRole(role)}
               </label>
             ))}
           </div>

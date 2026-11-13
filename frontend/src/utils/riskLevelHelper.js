@@ -9,6 +9,6 @@ export function riskLevelColor(level) {
 }
 
 export function riskLevelLabel(level) {
-  const labels = { LOW: "Bajo", MEDIUM: "Medio", HIGH: "Alto", CRITICAL: "Critico" };
+  const labels = { LOW: "Bajo", MEDIUM: "Medio", HIGH: "Alto", CRITICAL: "Crítico" };
   return labels[level] || "Sin evaluar";
 }

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, Save, ShieldCheck, Layers3, BarChart3, Crosshair, Info, Loader2 } from "lucide-react";
 import { SCALE_OPTIONS } from "../../utils/constants";
-import { riskLevelColor, riskLevelLabel } from "../../utils/riskLevelHelper";
+import FieldError from "../common/FieldError";
+import RiskLevelBadge from "../common/RiskLevelBadge";
 
 export default function RiskForm({ initialValues, categories, onSubmit, submitLabel = "Guardar" }) {
   const [values, setValues] = useState({
@@ -13,20 +14,53 @@ export default function RiskForm({ initialValues, categories, onSubmit, submitLa
     impact: initialValues?.impact || "",
   });
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const formId = useId();
+  const fieldRefs = useRef({});
+  const fieldToFocus = useRef(null);
   const score = values.probability && values.impact ? Number(values.probability) * Number(values.impact) : null;
   const level = score === null ? null : score <= 4 ? "LOW" : score <= 9 ? "MEDIUM" : score <= 16 ? "HIGH" : "CRITICAL";
   const category = categories.find((item) => String(item.id) === String(values.category_id));
 
+  useEffect(() => {
+    if (fieldToFocus.current) {
+      fieldRefs.current[fieldToFocus.current]?.focus();
+      fieldToFocus.current = null;
+    }
+  }, [fieldErrors]);
+
+  function fieldProps(field) {
+    return {
+      id: `${formId}-${field}`,
+      name: field,
+      ref: (node) => { fieldRefs.current[field] = node; },
+      "aria-required": true,
+      "aria-invalid": Boolean(fieldErrors[field]),
+      "aria-describedby": fieldErrors[field] ? `${formId}-${field}-error` : undefined,
+    };
+  }
+
   function update(field, value) {
     setValues((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    if (!values.title || !values.category_id) {
-      setError("El título y la categoría son obligatorios.");
+    const nextErrors = {};
+    if (!values.title) nextErrors.title = "Ingresa un título para el riesgo.";
+    if (!values.category_id) nextErrors.category_id = "Selecciona una categoría.";
+    const invalidFields = Object.keys(nextErrors);
+    fieldToFocus.current = invalidFields[0] || null;
+    setFieldErrors(nextErrors);
+    if (invalidFields.length) {
       return;
     }
     setSaving(true);
@@ -60,25 +94,31 @@ export default function RiskForm({ initialValues, categories, onSubmit, submitLa
             <h3>Información del riesgo</h3>
             <p>Completa los datos principales. Los campos con <span className="required-marker">*</span> son obligatorios.</p>
           </div>
-          <label>
-            <span>Título <span className="required-marker">*</span></span>
-            <input value={values.title} onChange={(e) => update("title", e.target.value)} placeholder="Ingresa un título descriptivo del riesgo" aria-required="true" aria-invalid={Boolean(error && !values.title)} />
-          </label>
+          <div className="form-field">
+            <label htmlFor={`${formId}-title`}>
+              <span>Título <span className="required-marker">*</span></span>
+              <input {...fieldProps("title")} value={values.title} onChange={(e) => update("title", e.target.value)} placeholder="Ingresa un título descriptivo del riesgo" />
+            </label>
+            <FieldError id={`${formId}-title-error`}>{fieldErrors.title}</FieldError>
+          </div>
 
           <label>
             Descripción
             <textarea rows={4} value={values.description} onChange={(e) => update("description", e.target.value)} placeholder="Describe el riesgo, su causa y sus posibles consecuencias." />
           </label>
 
-          <label>
-            <span>Categoría <span className="required-marker">*</span></span>
-            <select value={values.category_id} onChange={(e) => update("category_id", e.target.value)} aria-required="true" aria-invalid={Boolean(error && !values.category_id)}>
-              <option value="">Selecciona una categoría</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
-          </label>
+          <div className="form-field">
+            <label htmlFor={`${formId}-category_id`}>
+              <span>Categoría <span className="required-marker">*</span></span>
+              <select {...fieldProps("category_id")} value={values.category_id} onChange={(e) => update("category_id", e.target.value)}>
+                <option value="">Selecciona una categoría</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </label>
+            <FieldError id={`${formId}-category_id-error`}>{fieldErrors.category_id}</FieldError>
+          </div>
 
           <div className="form-row">
             <label>
@@ -115,7 +155,7 @@ export default function RiskForm({ initialValues, categories, onSubmit, submitLa
           </dl>
           <div className="summary-risk-level">
             <strong>Nivel de riesgo</strong>
-            <span className="risk-level-badge" style={{ backgroundColor: riskLevelColor(level) }}>{level ? riskLevelLabel(level) : "—"}</span>
+            <RiskLevelBadge level={level} emptyLabel="—" />
           </div>
           {score !== null && <p className="summary-score">Puntuación inicial: <strong>{score} / 25</strong></p>}
           <div className="alert alert-info"><Info size={20} /><span>El nivel se calcula automáticamente según la probabilidad y el impacto seleccionados.</span></div>
