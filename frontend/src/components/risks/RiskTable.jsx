@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, Eye, Pencil } from "lucide-react";
+import { Eye, Pencil } from "lucide-react";
 import Table from "../common/Table";
 import { useAuth } from "../../hooks/useAuth";
 import { ROLES } from "../../utils/constants";
-import { riskLevelColor, riskLevelLabel } from "../../utils/riskLevelHelper";
+import RiskLevelBadge from "../common/RiskLevelBadge";
 import { formatStatus } from "../../utils/formatters";
 
 export default function RiskTable({ risks }) {
@@ -17,12 +17,7 @@ export default function RiskTable({ risks }) {
     {
       key: "risk_level",
       label: "Nivel",
-      render: (row) => (
-        <span className="risk-level-badge" style={{ backgroundColor: riskLevelColor(row.risk_level) }}>
-          {row.risk_level === "CRITICAL" && <ShieldAlert size={12} />}
-          {riskLevelLabel(row.risk_level)}
-        </span>
-      ),
+      render: (row) => <RiskLevelBadge level={row.risk_level} />,
     },
     { key: "risk_score", label: "Puntuación", render: (row) => <span className="score-value">{row.risk_score ?? "—"}</span> },
     {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Pencil, ShieldAlert, BarChart3, Crosshair, ArrowLeft, ClipboardCheck, History, Loader2 } from "lucide-react";
 import * as riskService from "../services/riskService";
@@ -13,7 +13,9 @@ import PageHeader from "../components/common/PageHeader";
 import EmptyState from "../components/common/EmptyState";
 import StatCard from "../components/dashboard/StatCard";
 import MitigationPlanTable from "../components/mitigations/MitigationPlanTable";
-import { riskLevelColor, riskLevelLabel } from "../utils/riskLevelHelper";
+import RiskLevelBadge from "../components/common/RiskLevelBadge";
+import FieldError from "../components/common/FieldError";
+import { getValidationMessage } from "../utils/formValidation";
 import { formatStatus, formatDateTime } from "../utils/formatters";
 import { SCALE_OPTIONS, ROLES } from "../utils/constants";
 
@@ -30,6 +32,8 @@ export default function RiskDetail() {
   const [evaluating, setEvaluating] = useState(false);
   const [evaluationError, setEvaluationError] = useState(null);
   const [evaluationSuccess, setEvaluationSuccess] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const evaluationId = useId();
   const { plans, loading: plansLoading } = useMitigations(riskId);
 
   const loadData = useCallback(async () => {
@@ -71,6 +75,15 @@ export default function RiskDetail() {
     }
   }
 
+  function handleEvaluationInvalid(event) {
+    const input = event.target;
+    setFieldErrors((current) => ({ ...current, [input.name]: getValidationMessage(input) }));
+  }
+
+  function clearFieldError(field) {
+    setFieldErrors((current) => ({ ...current, [field]: "" }));
+  }
+
   if (loadError) return <ErrorState message={loadError} />;
   if (!risk) return <LoadingState variant="detail" />;
 
@@ -100,7 +113,7 @@ export default function RiskDetail() {
           <p className="detail-description">{risk.description || "Este riesgo no tiene una descripción registrada."}</p>
           <dl className="detail-metadata">
             <div><dt>Estado actual</dt><dd><span className={`status-badge status-${risk.status?.toLowerCase()}`}>{formatStatus(risk.status)}</span></dd></div>
-            <div><dt>Nivel de riesgo</dt><dd><span className="risk-level-badge" style={{ backgroundColor: riskLevelColor(risk.risk_level) }}>{riskLevelLabel(risk.risk_level)}</span></dd></div>
+            <div><dt>Nivel de riesgo</dt><dd><RiskLevelBadge level={risk.risk_level} /></dd></div>
           </dl>
         </Card>
         <Card title="Historial de evaluaciones">
@@ -110,7 +123,7 @@ export default function RiskDetail() {
             <ul className="evaluation-list">
               {evaluations.map((ev) => (
                 <li className="evaluation-entry" key={ev.id}>
-                  <div className="evaluation-entry-header"><time>{formatDateTime(ev.evaluation_date)}</time><span className="risk-level-badge" style={{ backgroundColor: riskLevelColor(ev.risk_level) }}>{riskLevelLabel(ev.risk_level)}</span></div>
+                  <div className="evaluation-entry-header"><time>{formatDateTime(ev.evaluation_date)}</time><RiskLevelBadge level={ev.risk_level} /></div>
                   <p>Probabilidad <strong>{ev.probability}</strong><span aria-hidden="true"> · </span>Impacto <strong>{ev.impact}</strong></p>
                   {ev.observations && <p className="text-muted">{ev.observations}</p>}
                 </li>
@@ -124,21 +137,21 @@ export default function RiskDetail() {
         <Card title="Registrar una evaluación">
           <Alert type="error" message={evaluationError} />
           <Alert type="success" message={evaluationSuccess} />
-          <form className="app-form inline-form" onSubmit={handleEvaluate} aria-busy={evaluating}>
-            <label>
+          <form className="app-form inline-form evaluation-form" onSubmit={handleEvaluate} onInvalid={handleEvaluationInvalid} aria-busy={evaluating}>
+            <div className="form-field"><label htmlFor={`${evaluationId}-probability`}>
               Probabilidad
-              <select value={probability} onChange={(e) => setProbability(e.target.value)} required>
+              <select id={`${evaluationId}-probability`} name="probability" value={probability} onChange={(e) => { setProbability(e.target.value); clearFieldError("probability"); }} aria-invalid={Boolean(fieldErrors.probability)} aria-describedby={fieldErrors.probability ? `${evaluationId}-probability-error` : undefined} required>
                 <option value="">Selecciona</option>
                 {SCALE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
-            </label>
-            <label>
+            </label><FieldError id={`${evaluationId}-probability-error`}>{fieldErrors.probability}</FieldError></div>
+            <div className="form-field"><label htmlFor={`${evaluationId}-impact`}>
               Impacto
-              <select value={impact} onChange={(e) => setImpact(e.target.value)} required>
+              <select id={`${evaluationId}-impact`} name="impact" value={impact} onChange={(e) => { setImpact(e.target.value); clearFieldError("impact"); }} aria-invalid={Boolean(fieldErrors.impact)} aria-describedby={fieldErrors.impact ? `${evaluationId}-impact-error` : undefined} required>
                 <option value="">Selecciona</option>
                 {SCALE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
-            </label>
+            </label><FieldError id={`${evaluationId}-impact-error`}>{fieldErrors.impact}</FieldError></div>
             <label>
               Observaciones
               <input placeholder="Añade un contexto para esta evaluación" value={observations} onChange={(e) => setObservations(e.target.value)} />
