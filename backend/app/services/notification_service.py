@@ -13,9 +13,9 @@ class NotificationService:
     def list_for_user(self, user_id: int) -> list[NotificationOut]:
         return [NotificationOut.model_validate(n) for n in self.repo.list_for_user(user_id)]
 
-    def mark_as_read(self, notification_id: int) -> NotificationOut:
+    def mark_as_read(self, notification_id: int, user_id: int) -> NotificationOut:
         notification = self.repo.get_by_id(notification_id)
-        if not notification:
+        if not notification or notification.user_id not in (None, user_id):
             raise NotFoundError("Notificacion no encontrada.", "NOTIFICATION_NOT_FOUND")
         notification = self.repo.mark_as_read(notification)
         return NotificationOut.model_validate(notification)

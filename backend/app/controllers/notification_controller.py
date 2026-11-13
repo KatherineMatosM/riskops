@@ -8,5 +8,5 @@ def list_notifications(current_user: User, db: Session):
     return success_response(NotificationService(db).list_for_user(current_user.id))
 
 
-def mark_as_read(notification_id: int, db: Session):
-    return success_response(NotificationService(db).mark_as_read(notification_id))
+def mark_as_read(notification_id: int, current_user: User, db: Session):
+    return success_response(NotificationService(db).mark_as_read(notification_id, current_user.id))

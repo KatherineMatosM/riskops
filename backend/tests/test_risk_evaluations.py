@@ -1,14 +1,16 @@
-def test_evaluation_validates_range(client):
-    client.post("/api/v1/auth/register", json={
-        "full_name": "User Test", "email": "user2@example.com", "password": "Password123",
-    })
-    login = client.post("/api/v1/auth/login", json={"email": "user2@example.com", "password": "Password123"})
-    token = login.json()["data"]["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+def test_evaluation_validates_range(client, analyst_headers):
+    categories = client.get("/api/v1/risk-categories", headers=analyst_headers).json()["data"]
+    created = client.post(
+        "/api/v1/risks",
+        json={"title": "Riesgo de evaluación", "category_id": categories[0]["id"]},
+        headers=analyst_headers,
+    )
+    assert created.status_code == 200
+    risk_id = created.json()["data"]["id"]
 
     response = client.post(
-        "/api/v1/risks/1/evaluations",
+        f"/api/v1/risks/{risk_id}/evaluations",
         json={"probability": 6, "impact": 3},
-        headers=headers,
+        headers=analyst_headers,
     )
     assert response.status_code == 422
