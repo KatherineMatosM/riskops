@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.database.unit_of_work import atomic
 from app.models.mitigation_plan import MitigationPlan
 from app.models.risk_history import RiskHistory
 from app.repositories.mitigation_plan_repository import MitigationPlanRepository
@@ -12,6 +13,7 @@ VALID_STATUSES = ["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"]
 
 class MitigationPlanService:
     def __init__(self, db: Session):
+        self.db = db
         self.repo = MitigationPlanRepository(db)
         self.risk_repo = RiskRepository(db)
         self.history_repo = RiskHistoryRepository(db)
@@ -25,6 +27,7 @@ class MitigationPlanService:
             raise NotFoundError("Plan de mitigacion no encontrado.", "MITIGATION_PLAN_NOT_FOUND")
         return MitigationPlanOut.model_validate(plan)
 
+    @atomic
     def create_plan(self, risk_id: int, data: MitigationPlanCreateRequest, current_user_id: int) -> MitigationPlanOut:
         risk = self.risk_repo.get_by_id(risk_id)
         if not risk:
@@ -47,6 +50,7 @@ class MitigationPlanService:
         ))
         return MitigationPlanOut.model_validate(plan)
 
+    @atomic
     def update_plan(self, plan_id: int, data: MitigationPlanUpdateRequest) -> MitigationPlanOut:
         plan = self.repo.get_by_id(plan_id)
         if not plan:
@@ -75,6 +79,7 @@ class MitigationPlanService:
         plan = self.repo.update(plan)
         return MitigationPlanOut.model_validate(plan)
 
+    @atomic
     def delete_plan(self, plan_id: int) -> None:
         plan = self.repo.get_by_id(plan_id)
         if not plan:

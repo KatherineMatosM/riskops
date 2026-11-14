@@ -16,15 +16,15 @@ class MitigationActionRepository:
 
     def create(self, action: MitigationAction) -> MitigationAction:
         self.db.add(action)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(action)
         return action
 
     def update(self, action: MitigationAction) -> MitigationAction:
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(action)
         return action
 
     def delete(self, action: MitigationAction) -> None:
         self.db.delete(action)
-        self.db.commit()
+        self.db.flush()

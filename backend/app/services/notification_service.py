@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.database.unit_of_work import atomic
 from app.models.notification import Notification
 from app.models.risk import Risk
 from app.repositories.notification_repository import NotificationRepository
@@ -8,11 +9,13 @@ from app.schemas.notification_schema import NotificationOut
 
 class NotificationService:
     def __init__(self, db: Session):
+        self.db = db
         self.repo = NotificationRepository(db)
 
     def list_for_user(self, user_id: int) -> list[NotificationOut]:
         return [NotificationOut.model_validate(n) for n in self.repo.list_for_user(user_id)]
 
+    @atomic
     def mark_as_read(self, notification_id: int, user_id: int) -> NotificationOut:
         notification = self.repo.get_by_id(notification_id)
         if not notification or notification.user_id not in (None, user_id):
@@ -20,6 +23,7 @@ class NotificationService:
         notification = self.repo.mark_as_read(notification)
         return NotificationOut.model_validate(notification)
 
+    @atomic
     def notify_risk_critical(self, risk: Risk) -> None:
         self.repo.create(Notification(
             user_id=None, title="Riesgo critico registrado",
@@ -27,6 +31,7 @@ class NotificationService:
             type="RISK_CRITICAL",
         ))
 
+    @atomic
     def notify_risk_assigned(self, risk: Risk) -> None:
         if risk.responsible_user_id:
             self.repo.create(Notification(
@@ -35,6 +40,7 @@ class NotificationService:
                 type="RISK_ASSIGNED",
             ))
 
+    @atomic
     def notify_mitigation_due_soon(self, plan) -> None:
         self.repo.create(Notification(
             user_id=plan.responsible_user_id, title="Plan de mitigacion proximo a vencer",
@@ -42,6 +48,7 @@ class NotificationService:
             type="MITIGATION_DUE_SOON",
         ))
 
+    @atomic
     def notify_mitigation_overdue(self, plan) -> None:
         self.repo.create(Notification(
             user_id=plan.responsible_user_id, title="Plan de mitigacion atrasado",

@@ -12,18 +12,18 @@ class RiskRepository:
 
     def create(self, risk: Risk) -> Risk:
         self.db.add(risk)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(risk)
         return risk
 
     def update(self, risk: Risk) -> Risk:
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(risk)
         return risk
 
     def delete(self, risk: Risk) -> None:
         self.db.delete(risk)
-        self.db.commit()
+        self.db.flush()
 
     def list_filtered(
         self,

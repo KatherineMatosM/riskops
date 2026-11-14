@@ -9,7 +9,7 @@ class RiskHistoryRepository:
 
     def create(self, entry: RiskHistory) -> RiskHistory:
         self.db.add(entry)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(entry)
         return entry
 

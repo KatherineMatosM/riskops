@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.database.unit_of_work import atomic
 from app.models.risk_category import RiskCategory
 from app.repositories.risk_category_repository import RiskCategoryRepository
 from app.utils.exceptions import NotFoundError, ConflictError
@@ -7,6 +8,7 @@ from app.schemas.risk_category_schema import RiskCategoryCreateRequest, RiskCate
 
 class RiskCategoryService:
     def __init__(self, db: Session):
+        self.db = db
         self.repo = RiskCategoryRepository(db)
 
     def list_categories(self) -> list[RiskCategoryOut]:
@@ -18,6 +20,7 @@ class RiskCategoryService:
             raise NotFoundError("Categoria no encontrada.", "CATEGORY_NOT_FOUND")
         return RiskCategoryOut.model_validate(category)
 
+    @atomic
     def create_category(self, data: RiskCategoryCreateRequest) -> RiskCategoryOut:
         if self.repo.get_by_name(data.name):
             raise ConflictError("La categoria ya existe.", "CATEGORY_ALREADY_EXISTS")
@@ -25,6 +28,7 @@ class RiskCategoryService:
         category = self.repo.create(category)
         return RiskCategoryOut.model_validate(category)
 
+    @atomic
     def update_category(self, category_id: int, data: RiskCategoryUpdateRequest) -> RiskCategoryOut:
         category = self.repo.get_by_id(category_id)
         if not category:
@@ -38,6 +42,7 @@ class RiskCategoryService:
         category = self.repo.update(category)
         return RiskCategoryOut.model_validate(category)
 
+    @atomic
     def delete_category(self, category_id: int) -> None:
         category = self.repo.get_by_id(category_id)
         if not category:

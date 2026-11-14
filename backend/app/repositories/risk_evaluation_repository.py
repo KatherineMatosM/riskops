@@ -9,7 +9,7 @@ class RiskEvaluationRepository:
 
     def create(self, evaluation: RiskEvaluation) -> RiskEvaluation:
         self.db.add(evaluation)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(evaluation)
         return evaluation
 

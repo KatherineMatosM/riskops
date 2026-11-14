@@ -19,7 +19,7 @@ class RoleRepository:
 
     def create(self, role: Role) -> Role:
         self.db.add(role)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(role)
         return role
 

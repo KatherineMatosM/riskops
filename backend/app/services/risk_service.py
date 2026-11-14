@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.database.unit_of_work import atomic
 from app.models.risk import Risk
 from app.models.risk_history import RiskHistory
 from app.repositories.risk_repository import RiskRepository
@@ -34,6 +35,7 @@ class RiskService:
             raise NotFoundError("Riesgo no encontrado.", "RISK_NOT_FOUND")
         return RiskOut.model_validate(risk)
 
+    @atomic
     def create_risk(self, data: RiskCreateRequest, current_user_id: int) -> RiskOut:
         category = self.category_repo.get_by_id(data.category_id)
         if not category:
@@ -59,6 +61,7 @@ class RiskService:
 
         return RiskOut.model_validate(risk)
 
+    @atomic
     def update_risk(self, risk_id: int, data: RiskUpdateRequest, current_user_id: int) -> RiskOut:
         risk = self.repo.get_by_id(risk_id)
         if not risk:
@@ -89,6 +92,7 @@ class RiskService:
         risk = self.repo.update(risk)
         return RiskOut.model_validate(risk)
 
+    @atomic
     def delete_risk(self, risk_id: int, current_user_id: int) -> None:
         risk = self.repo.get_by_id(risk_id)
         if not risk:

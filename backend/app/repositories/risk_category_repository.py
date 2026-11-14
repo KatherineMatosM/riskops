@@ -19,15 +19,15 @@ class RiskCategoryRepository:
 
     def create(self, category: RiskCategory) -> RiskCategory:
         self.db.add(category)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(category)
         return category
 
     def update(self, category: RiskCategory) -> RiskCategory:
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(category)
         return category
 
     def delete(self, category: RiskCategory) -> None:
         self.db.delete(category)
-        self.db.commit()
+        self.db.flush()

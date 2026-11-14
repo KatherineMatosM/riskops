@@ -9,7 +9,7 @@ class NotificationRepository:
 
     def create(self, notification: Notification) -> Notification:
         self.db.add(notification)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(notification)
         return notification
 
@@ -26,6 +26,6 @@ class NotificationRepository:
 
     def mark_as_read(self, notification: Notification) -> Notification:
         notification.is_read = True
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(notification)
         return notification

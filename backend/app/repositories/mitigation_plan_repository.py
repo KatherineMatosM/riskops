@@ -27,15 +27,15 @@ class MitigationPlanRepository:
 
     def create(self, plan: MitigationPlan) -> MitigationPlan:
         self.db.add(plan)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(plan)
         return plan
 
     def update(self, plan: MitigationPlan) -> MitigationPlan:
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(plan)
         return plan
 
     def delete(self, plan: MitigationPlan) -> None:
         self.db.delete(plan)
-        self.db.commit()
+        self.db.flush()
