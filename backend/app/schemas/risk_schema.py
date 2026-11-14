@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 
 class RiskOut(BaseModel):
@@ -20,8 +21,9 @@ class RiskOut(BaseModel):
 
 
 class RiskCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     title: str = Field(min_length=3, max_length=200)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=2000)
     category_id: int
     responsible_user_id: int | None = None
     probability: int | None = Field(default=None, ge=1, le=5)
@@ -29,11 +31,22 @@ class RiskCreateRequest(BaseModel):
 
 
 class RiskUpdateRequest(BaseModel):
-    title: str | None = None
-    description: str | None = None
+    model_config = ConfigDict(extra="forbid")
+    title: str | None = Field(default=None, min_length=3, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
     category_id: int | None = None
     responsible_user_id: int | None = None
     status: str | None = None
+    # Null axes mean no assessment change; they do not erase an existing evaluation.
+    probability: int | None = Field(default=None, ge=1, le=5)
+    impact: int | None = Field(default=None, ge=1, le=5)
+
+    @field_validator("title", "category_id", "status", mode="before")
+    @classmethod
+    def reject_explicit_null(cls, value):
+        if value is None:
+            raise PydanticCustomError("null_not_allowed", "Este campo no admite valores nulos.")
+        return value
 
 
 class RiskFilterParams(BaseModel):

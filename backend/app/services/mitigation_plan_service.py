@@ -5,8 +5,10 @@ from app.models.risk_history import RiskHistory
 from app.repositories.mitigation_plan_repository import MitigationPlanRepository
 from app.repositories.risk_repository import RiskRepository
 from app.repositories.risk_history_repository import RiskHistoryRepository
+from app.repositories.user_repository import UserRepository
 from app.utils.exceptions import NotFoundError, ValidationAppError
 from app.schemas.mitigation_plan_schema import MitigationPlanCreateRequest, MitigationPlanUpdateRequest, MitigationPlanOut
+from app.utils.validation_errors import body_field_error
 
 VALID_STATUSES = ["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"]
 
@@ -17,6 +19,7 @@ class MitigationPlanService:
         self.repo = MitigationPlanRepository(db)
         self.risk_repo = RiskRepository(db)
         self.history_repo = RiskHistoryRepository(db)
+        self.user_repo = UserRepository(db)
 
     def list_by_risk(self, risk_id: int) -> list[MitigationPlanOut]:
         return [MitigationPlanOut.model_validate(p) for p in self.repo.list_by_risk(risk_id)]
@@ -32,6 +35,7 @@ class MitigationPlanService:
         risk = self.risk_repo.get_by_id(risk_id)
         if not risk:
             raise NotFoundError("Riesgo no encontrado.", "RISK_NOT_FOUND")
+        self._validate_responsible(data.responsible_user_id)
 
         plan = MitigationPlan(
             risk_id=risk_id, title=data.title, description=data.description,
@@ -57,11 +61,23 @@ class MitigationPlanService:
             raise NotFoundError("Plan de mitigacion no encontrado.", "MITIGATION_PLAN_NOT_FOUND")
 
         if data.status is not None and data.status not in VALID_STATUSES:
-            raise ValidationAppError("Estado de plan invalido.", "INVALID_STATUS")
+            raise ValidationAppError("Estado de plan invalido.", "INVALID_STATUS", errors=[
+                body_field_error("status", "Selecciona un estado de plan válido.", "invalid_choice"),
+            ])
+        if data.responsible_user_id is not None:
+            self._validate_responsible(data.responsible_user_id)
+        start_date = data.start_date if data.start_date is not None else plan.start_date
+        due_date = data.due_date if data.due_date is not None else plan.due_date
+        if due_date < start_date:
+            field = "due_date" if "due_date" in data.model_fields_set else "start_date"
+            message = "La fecha límite debe ser igual o posterior a la fecha de inicio." if field == "due_date" else "La fecha de inicio no puede ser posterior a la fecha límite."
+            raise ValidationAppError("Las fechas del plan no son válidas.", "INVALID_DATE_RANGE", errors=[
+                body_field_error(field, message, "date_order"),
+            ])
 
         if data.title is not None:
             plan.title = data.title
-        if data.description is not None:
+        if "description" in data.model_fields_set:
             plan.description = data.description
         if data.responsible_user_id is not None:
             plan.responsible_user_id = data.responsible_user_id
@@ -85,3 +101,9 @@ class MitigationPlanService:
         if not plan:
             raise NotFoundError("Plan de mitigacion no encontrado.", "MITIGATION_PLAN_NOT_FOUND")
         self.repo.delete(plan)
+
+    def _validate_responsible(self, user_id: int) -> None:
+        if not self.user_repo.get_by_id(user_id):
+            raise ValidationAppError("El responsable indicado no existe.", "INVALID_RESPONSIBLE", errors=[
+                body_field_error("responsible_user_id", "El responsable indicado no existe.", "invalid_reference"),
+            ])

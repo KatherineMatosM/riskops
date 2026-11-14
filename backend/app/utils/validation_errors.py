@@ -5,6 +5,10 @@ from typing import Any
 _REQUEST_LOCATIONS = {"body", "query", "path", "header", "cookie"}
 
 
+def body_field_error(field: str, message: str, error_type: str = "value_error") -> dict:
+    return {"field": field, "location": ["body", field], "message": message, "type": error_type}
+
+
 def normalize_error_location(location: Any) -> list[str | int]:
     if not isinstance(location, (list, tuple)):
         return []
@@ -51,6 +55,7 @@ def _validation_message(error: dict, field: str | None) -> str:
         return template.format(bound) if type(bound) is int else fallback
     messages = {
         "missing": "Este campo es obligatorio.",
+        "null_not_allowed": "Este campo no admite valores nulos.",
         "int_type": "Ingresa un número entero válido.",
         "int_parsing": "Ingresa un número entero válido.",
         "int_from_float": "Ingresa un número entero válido.",
@@ -70,6 +75,8 @@ def _validation_message(error: dict, field: str | None) -> str:
         "string_pattern_mismatch": "Revisa el formato de este campo.",
         "json_invalid": "El contenido JSON no es válido.",
     }
+    if error_type == "date_order":
+        return "La fecha límite debe ser igual o posterior a la fecha de inicio."
     if error_type.startswith("datetime_"):
         return "Ingresa una fecha y hora válidas."
     if error_type.startswith("date_"):
