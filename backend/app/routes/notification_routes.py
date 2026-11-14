@@ -14,5 +14,9 @@ def list_notifications(current_user: User = Depends(get_current_user), db: Sessi
 
 
 @router.put("/{notification_id}/read")
-def mark_as_read(notification_id: int, db: Session = Depends(get_db)):
-    return notification_controller.mark_as_read(notification_id, db)
+def mark_as_read(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return notification_controller.mark_as_read(notification_id, current_user, db)

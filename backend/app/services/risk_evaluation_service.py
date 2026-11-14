@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.database.unit_of_work import atomic
 from app.models.risk_evaluation import RiskEvaluation
 from app.models.risk_history import RiskHistory
 from app.repositories.risk_evaluation_repository import RiskEvaluationRepository
@@ -21,6 +22,7 @@ class RiskEvaluationService:
     def list_by_risk(self, risk_id: int) -> list[RiskEvaluationOut]:
         return [RiskEvaluationOut.model_validate(e) for e in self.repo.list_by_risk(risk_id)]
 
+    @atomic
     def evaluate_risk(self, risk_id: int, data: RiskEvaluationCreateRequest, current_user_id: int) -> RiskEvaluationOut:
         risk = self.risk_repo.get_by_id(risk_id)
         if not risk:

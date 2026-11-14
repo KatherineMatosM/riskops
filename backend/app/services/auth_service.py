@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.database.unit_of_work import atomic
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.repositories.role_repository import RoleRepository
@@ -15,6 +16,7 @@ class AuthService:
         self.user_repo = UserRepository(db)
         self.role_repo = RoleRepository(db)
 
+    @atomic
     def register(self, data: RegisterRequest) -> UserOut:
         if self.user_repo.get_by_email(data.email):
             raise ConflictError("El correo ya esta registrado.", "EMAIL_ALREADY_EXISTS")
@@ -40,6 +42,7 @@ class AuthService:
         token = create_access_token(subject=str(user.id), extra_claims={"roles": roles})
         return token, self.to_user_out(user)
 
+    @atomic
     def change_password(self, user_id: int, data: ChangePasswordRequest) -> None:
         user = self.user_repo.get_by_id(user_id)
         if not user or not verify_password(data.current_password, user.password_hash):

@@ -1,58 +1,40 @@
 from datetime import date
-import pandas as pd
 from sqlalchemy.orm import Session
-from app.repositories.risk_repository import RiskRepository
-from app.repositories.mitigation_plan_repository import MitigationPlanRepository
+from app.repositories.statistics_repository import RiskStatisticsRepository, MitigationStatisticsRepository
 from app.schemas.analytics_schema import AnalyticsResponse, AnalyticsInsight
 
 
 class AnalyticsService:
     def __init__(self, db: Session):
-        self.risk_repo = RiskRepository(db)
-        self.plan_repo = MitigationPlanRepository(db)
+        self.risk_repo = RiskStatisticsRepository(db)
+        self.plan_repo = MitigationStatisticsRepository(db)
 
-    def build_analytics(self) -> AnalyticsResponse:
-        risks = self.risk_repo.list_all()
-        if not risks:
+    def build_analytics(self, reference_date: date | None = None) -> AnalyticsResponse:
+        reference_date = reference_date or date.today()
+        category_counts = self.risk_repo.counts_by_category()
+        if not category_counts:
             return AnalyticsResponse(
                 top_categories=[], recurring_risks=[], trending_risks=[],
                 overdue_mitigations=[], recommendations=[],
             )
 
-        risks_df = pd.DataFrame([
-            {
-                "id": r.id, "title": r.title,
-                "category": r.category.name if r.category else "Sin categoria",
-                "risk_level": r.risk_level, "created_at": r.created_at,
-            }
-            for r in risks
-        ])
-
-        top_categories = (
-            risks_df.groupby("category").size().sort_values(ascending=False)
-            .reset_index(name="count").to_dict(orient="records")
-        )
-
-        recurring = risks_df.groupby("title").size().reset_index(name="count")
-        recurring_risks = recurring[recurring["count"] > 1].to_dict(orient="records")
-
-        risks_df["month"] = risks_df["created_at"].dt.strftime("%Y-%m")
-        monthly = risks_df.groupby(["category", "month"]).size().reset_index(name="count")
+        top_categories = sorted(category_counts, key=lambda item: (-item["count"], item["category"]))
+        recurring_risks = self.risk_repo.recurring_titles()
+        monthly = self.risk_repo.counts_by_category_month()
+        monthly_by_category: dict[str, list[dict]] = {}
+        for item in monthly:
+            monthly_by_category.setdefault(item["category"], []).append(item)
         trending_risks = []
-        for category in monthly["category"].unique():
-            cat_data = monthly[monthly["category"] == category].sort_values("month")
-            if len(cat_data) >= 2 and cat_data["count"].iloc[-1] > cat_data["count"].iloc[-2]:
+        for category in sorted(monthly_by_category):
+            observed = sorted(monthly_by_category[category], key=lambda item: item["month"])
+            if len(observed) >= 2 and observed[-1]["count"] > observed[-2]["count"]:
                 trending_risks.append({
                     "category": category,
-                    "current_count": int(cat_data["count"].iloc[-1]),
-                    "previous_count": int(cat_data["count"].iloc[-2]),
+                    "current_count": observed[-1]["count"],
+                    "previous_count": observed[-2]["count"],
                 })
 
-        overdue = self.plan_repo.list_overdue(date.today())
-        overdue_mitigations = [
-            {"id": p.id, "title": p.title, "due_date": str(p.due_date), "status": p.status}
-            for p in overdue
-        ]
+        overdue_mitigations = self.plan_repo.overdue_projection(reference_date)
 
         recommendations = []
         if top_categories:

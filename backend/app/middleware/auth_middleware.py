@@ -17,12 +17,17 @@ def get_current_user(
     token = authorization.split(" ", 1)[1]
     try:
         payload = decode_access_token(token)
+        subject = payload.get("sub")
+        if not isinstance(subject, str) or not subject.isascii() or not subject.isdecimal():
+            raise ValueError("Invalid token subject")
+        user_id = int(subject)
+        if not 0 < user_id <= 2**63 - 1:
+            raise ValueError("Invalid token subject")
     except jwt.ExpiredSignatureError:
         raise UnauthorizedError("El token ha expirado.", "TOKEN_EXPIRED")
-    except jwt.InvalidTokenError:
+    except (jwt.InvalidTokenError, TypeError, ValueError, OverflowError):
         raise UnauthorizedError("Token invalido.", "INVALID_TOKEN")
 
-    user_id = int(payload.get("sub"))
     user_repo = UserRepository(db)
     user = user_repo.get_by_id(user_id)
     if not user or not user.is_active:

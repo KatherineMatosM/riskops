@@ -10,7 +10,7 @@ def test_create_risk_requires_authorized_role(client):
     token = _register_and_login(client)
     headers = {"Authorization": f"Bearer {token}"}
 
-    categories = client.get("/api/v1/risk-categories").json()["data"]
+    categories = client.get("/api/v1/risk-categories", headers=headers).json()["data"]
     category_id = categories[0]["id"]
 
     response = client.post(

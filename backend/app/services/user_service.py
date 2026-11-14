@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.database.unit_of_work import atomic
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.repositories.role_repository import RoleRepository
@@ -22,6 +23,7 @@ class UserService:
             raise NotFoundError("Usuario no encontrado.", "USER_NOT_FOUND")
         return self._to_out(user)
 
+    @atomic
     def create_user(self, data: UserCreateRequest) -> UserOut:
         if self.user_repo.get_by_email(data.email):
             raise ConflictError("El correo ya esta registrado.", "EMAIL_ALREADY_EXISTS")
@@ -36,6 +38,7 @@ class UserService:
         self.user_repo.set_roles(user, role_ids)
         return self._to_out(user)
 
+    @atomic
     def update_user(self, user_id: int, data: UserUpdateRequest) -> UserOut:
         user = self.user_repo.get_by_id(user_id)
         if not user:
@@ -52,6 +55,7 @@ class UserService:
             self.user_repo.set_roles(user, role_ids)
         return self._to_out(user)
 
+    @atomic
     def update_profile(self, user_id: int, data: UserProfileUpdateRequest) -> UserOut:
         user = self.user_repo.get_by_id(user_id)
         if not user:
@@ -61,6 +65,7 @@ class UserService:
         self.user_repo.update(user)
         return self._to_out(user)
 
+    @atomic
     def delete_user(self, user_id: int) -> None:
         user = self.user_repo.get_by_id(user_id)
         if not user:
