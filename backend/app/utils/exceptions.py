@@ -2,8 +2,16 @@ class AppError(Exception):
     status_code = 400
     error_code = "APP_ERROR"
 
-    def __init__(self, message: str, error_code: str | None = None, status_code: int | None = None):
+    def __init__(
+        self,
+        message: str,
+        error_code: str | None = None,
+        status_code: int | None = None,
+        *,
+        errors: list[dict] | None = None,
+    ):
         self.message = message
+        self.errors = errors
         if error_code:
             self.error_code = error_code
         if status_code:
