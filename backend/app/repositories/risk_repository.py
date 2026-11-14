@@ -53,7 +53,7 @@ class RiskRepository:
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = self.db.execute(count_stmt).scalar_one()
 
-        sort_column = getattr(Risk, sort_by, Risk.created_at)
+        sort_column = Risk.__table__.c[sort_by]
         stmt = stmt.order_by(sort_column.desc() if sort_dir == "desc" else sort_column.asc())
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
 

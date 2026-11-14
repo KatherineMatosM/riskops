@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
 
@@ -55,7 +56,10 @@ class RiskFilterParams(BaseModel):
     risk_level: str | None = None
     responsible_user_id: int | None = None
     search: str | None = None
-    page: int = 1
-    page_size: int = 20
-    sort_by: str = "created_at"
-    sort_dir: str = "desc"
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+    sort_by: Literal[
+        "id", "title", "description", "category_id", "responsible_user_id", "created_by",
+        "status", "probability", "impact", "risk_score", "risk_level", "created_at", "updated_at",
+    ] = "created_at"
+    sort_dir: Literal["asc", "desc"] = "desc"
