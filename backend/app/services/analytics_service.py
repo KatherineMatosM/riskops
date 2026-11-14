@@ -11,7 +11,8 @@ class AnalyticsService:
         self.risk_repo = RiskRepository(db)
         self.plan_repo = MitigationPlanRepository(db)
 
-    def build_analytics(self) -> AnalyticsResponse:
+    def build_analytics(self, reference_date: date | None = None) -> AnalyticsResponse:
+        reference_date = reference_date or date.today()
         risks = self.risk_repo.list_all()
         if not risks:
             return AnalyticsResponse(
@@ -48,7 +49,7 @@ class AnalyticsService:
                     "previous_count": int(cat_data["count"].iloc[-2]),
                 })
 
-        overdue = self.plan_repo.list_overdue(date.today())
+        overdue = self.plan_repo.list_overdue(reference_date)
         overdue_mitigations = [
             {"id": p.id, "title": p.title, "due_date": str(p.due_date), "status": p.status}
             for p in overdue
