@@ -4,6 +4,7 @@ import { AlertCircle, Save, ShieldCheck, Layers3, BarChart3, Crosshair, Info, Lo
 import { SCALE_OPTIONS } from "../../utils/constants";
 import FieldError from "../common/FieldError";
 import RiskLevelBadge from "../common/RiskLevelBadge";
+import { getErrorMessage, getFieldErrors } from "../../utils/apiErrors";
 
 export default function RiskForm({ initialValues, categories, onSubmit, submitLabel = "Guardar" }) {
   const [values, setValues] = useState({
@@ -30,12 +31,12 @@ export default function RiskForm({ initialValues, categories, onSubmit, submitLa
     }
   }, [fieldErrors]);
 
-  function fieldProps(field) {
+  function fieldProps(field, required = true) {
     return {
       id: `${formId}-${field}`,
       name: field,
       ref: (node) => { fieldRefs.current[field] = node; },
-      "aria-required": true,
+      "aria-required": required,
       "aria-invalid": Boolean(fieldErrors[field]),
       "aria-describedby": fieldErrors[field] ? `${formId}-${field}-error` : undefined,
     };
@@ -57,6 +58,8 @@ export default function RiskForm({ initialValues, categories, onSubmit, submitLa
     const nextErrors = {};
     if (!values.title) nextErrors.title = "Ingresa un título para el riesgo.";
     if (!values.category_id) nextErrors.category_id = "Selecciona una categoría.";
+    if (values.probability && !(values.impact || initialValues?.impact)) nextErrors.impact = "Indica el impacto para completar la evaluación.";
+    if (values.impact && !(values.probability || initialValues?.probability)) nextErrors.probability = "Indica la probabilidad para completar la evaluación.";
     const invalidFields = Object.keys(nextErrors);
     fieldToFocus.current = invalidFields[0] || null;
     setFieldErrors(nextErrors);
@@ -73,7 +76,10 @@ export default function RiskForm({ initialValues, categories, onSubmit, submitLa
         impact: values.impact ? Number(values.impact) : null,
       });
     } catch (err) {
-      setError(err.response?.data?.message || "No se pudo guardar el riesgo.");
+      const serverErrors = getFieldErrors(err, ["title", "category_id", "probability", "impact"]);
+      fieldToFocus.current = Object.keys(serverErrors)[0] || null;
+      setFieldErrors(serverErrors);
+      setError(getErrorMessage(err, "No se pudo guardar el riesgo."));
     } finally {
       setSaving(false);
     }
@@ -121,25 +127,25 @@ export default function RiskForm({ initialValues, categories, onSubmit, submitLa
           </div>
 
           <div className="form-row">
-            <label>
+            <div className="form-field"><label htmlFor={`${formId}-probability`}>
               Probabilidad
-              <select value={values.probability} onChange={(e) => update("probability", e.target.value)}>
+              <select {...fieldProps("probability", false)} value={values.probability} onChange={(e) => update("probability", e.target.value)}>
                 <option value="">Selecciona la probabilidad</option>
                 {SCALE_OPTIONS.map((n) => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-            </label>
+            </label><FieldError id={`${formId}-probability-error`}>{fieldErrors.probability}</FieldError></div>
 
-            <label>
+            <div className="form-field"><label htmlFor={`${formId}-impact`}>
               Impacto
-              <select value={values.impact} onChange={(e) => update("impact", e.target.value)}>
+              <select {...fieldProps("impact", false)} value={values.impact} onChange={(e) => update("impact", e.target.value)}>
                 <option value="">Selecciona el impacto</option>
                 {SCALE_OPTIONS.map((n) => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-            </label>
+            </label><FieldError id={`${formId}-impact-error`}>{fieldErrors.impact}</FieldError></div>
           </div>
         </div>
 

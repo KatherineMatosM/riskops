@@ -30,7 +30,7 @@ export function useDashboard() {
       setTrend(trendData);
       setMitigationsByStatus(mitigationData);
     } catch (err) {
-      setError(err.response?.data?.detail || "No se pudo cargar el resumen de riesgos. Inténtalo de nuevo.");
+      setError(err.response?.data?.message || "No se pudo cargar el resumen de riesgos. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }

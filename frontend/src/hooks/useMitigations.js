@@ -1,27 +1,35 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import * as mitigationPlanService from "../services/mitigationPlanService";
 
 export function useMitigations(riskId) {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const requestVersion = useRef(0);
 
   const fetchPlans = useCallback(async () => {
-    if (!riskId) return;
+    const version = ++requestVersion.current;
+    if (!riskId) {
+      setPlans([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const data = await mitigationPlanService.listPlansByRisk(riskId);
-      setPlans(data);
+      if (requestVersion.current === version) setPlans(data);
     } catch (err) {
-      setError(err);
+      if (requestVersion.current === version) setError(err);
     } finally {
-      setLoading(false);
+      if (requestVersion.current === version) setLoading(false);
     }
   }, [riskId]);
 
   useEffect(() => {
     fetchPlans();
+    return () => { requestVersion.current += 1; };
   }, [fetchPlans]);
 
   return { plans, loading, error, refresh: fetchPlans };

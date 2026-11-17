@@ -13,8 +13,12 @@ import LoadingState from "../components/common/LoadingState";
 import ErrorState from "../components/common/ErrorState";
 import { ROLES } from "../utils/constants";
 import { formatRole } from "../utils/formatters";
+import { useAuth } from "../hooks/useAuth";
+import { getErrorMessage, getFieldErrors } from "../utils/apiErrors";
 
 export default function Users() {
+  const { hasRole } = useAuth();
+  const canCreate = hasRole(ROLES.ADMIN);
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ full_name: "", email: "", password: "", roles: [ROLES.VIEWER] });
@@ -69,7 +73,8 @@ export default function Users() {
       setForm({ full_name: "", email: "", password: "", roles: [ROLES.VIEWER] });
       loadUsers();
     } catch (err) {
-      setError(err.response?.data?.message || "No se pudo crear el usuario.");
+      setFieldErrors(getFieldErrors(err, ["full_name", "email", "password"]));
+      setError(getErrorMessage(err, "No se pudo crear el usuario."));
     } finally {
       setCreating(false);
     }
@@ -84,7 +89,7 @@ export default function Users() {
 
   return (
     <div className="users-page">
-      <PageHeader icon={UsersIcon} title="Usuarios" description="Administra las cuentas, los roles y los permisos del sistema." actions={<button className="primary-button button-with-icon" onClick={() => { setError(null); setFieldErrors({}); setShowModal(true); }}><UserPlus size={18} /> Nuevo usuario</button>} />
+      <PageHeader icon={UsersIcon} title="Usuarios" description="Administra las cuentas, los roles y los permisos del sistema." actions={canCreate && <button className="primary-button button-with-icon" onClick={() => { setError(null); setFieldErrors({}); setShowModal(true); }}><UserPlus size={18} /> Nuevo usuario</button>} />
       {loading ? <LoadingState variant="users" label="Cargando usuarios..." /> : loadError ? <Card><ErrorState message={loadError} /><button type="button" className="secondary-button" onClick={loadUsers}>Reintentar</button></Card> : <>
         <div className="stats-grid">
           <StatCard icon={UsersIcon} label="Total usuarios" value={users.length} />
@@ -93,12 +98,12 @@ export default function Users() {
         </div>
         <Card title="Directorio de usuarios" description="Cuentas con acceso a RiskOps."><Table columns={columns} data={users} emptyMessage="Todavía no hay usuarios registrados." /></Card>
       </>}
-      <Modal open={showModal} title="Nuevo usuario" icon={UserPlus} description="Crea una nueva cuenta y asigna sus permisos." onClose={() => setShowModal(false)}>
+      <Modal open={canCreate && showModal} title="Nuevo usuario" icon={UserPlus} description="Crea una nueva cuenta y asigna sus permisos." onClose={() => setShowModal(false)}>
         <form className="app-form" onSubmit={handleCreate} onInvalid={handleInvalid} aria-busy={creating}>
           {error && <div className="alert alert-error" role="alert"><span>{error}</span></div>}
           <div className="form-field"><label htmlFor="new-user-full-name">
             Nombre completo
-            <input id="new-user-full-name" name="full_name" value={form.full_name} onChange={(e) => update("full_name", e.target.value)} placeholder="Nombre y apellido" autoComplete="name" aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "new-user-full-name-error" : undefined} required />
+            <input id="new-user-full-name" name="full_name" value={form.full_name} onChange={(e) => update("full_name", e.target.value)} placeholder="Nombre y apellido" autoComplete="name" minLength={2} maxLength={150} aria-invalid={Boolean(fieldErrors.full_name)} aria-describedby={fieldErrors.full_name ? "new-user-full-name-error" : undefined} required />
           </label><FieldError id="new-user-full-name-error">{fieldErrors.full_name}</FieldError></div>
           <div className="form-field"><label htmlFor="new-user-email">
             Correo electrónico
@@ -106,7 +111,7 @@ export default function Users() {
           </label><FieldError id="new-user-email-error">{fieldErrors.email}</FieldError></div>
           <div className="form-field"><label htmlFor="new-user-password">
             Contraseña
-            <PasswordInput id="new-user-password" name="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "new-user-password-error" : undefined} required />
+            <PasswordInput id="new-user-password" name="password" value={form.password} onChange={(e) => update("password", e.target.value)} autoComplete="new-password" minLength={8} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "new-user-password-error" : undefined} required />
           </label><FieldError id="new-user-password-error">{fieldErrors.password}</FieldError></div>
           <div className="security-tip"><ShieldCheck size={24} /><p><strong>Roles y permisos</strong>Selecciona uno o más roles para el usuario.</p></div>
           <div className="checkbox-group role-options" role="group" aria-label="Roles y permisos">

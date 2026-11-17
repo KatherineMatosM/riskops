@@ -5,6 +5,11 @@ export async function listUsers() {
   return response.data.data;
 }
 
+export async function listAssignees() {
+  const response = await api.get("/users/assignees");
+  return response.data.data;
+}
+
 export async function getUser(userId) {
   const response = await api.get(`/users/${userId}`);
   return response.data.data;

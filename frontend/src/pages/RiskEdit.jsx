@@ -16,13 +16,17 @@ export default function RiskEdit() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let active = true;
+    setRisk(null);
     setLoadError(null);
     Promise.all([riskService.getRisk(riskId), riskCategoryService.listCategories()]).then(
       ([riskData, categoryData]) => {
+        if (!active) return;
         setRisk(riskData);
         setCategories(categoryData);
       }
-    ).catch(() => setLoadError("No se pudo cargar la información del riesgo."));
+    ).catch(() => { if (active) setLoadError("No se pudo cargar la información del riesgo."); });
+    return () => { active = false; };
   }, [riskId]);
 
   async function handleSubmit(payload) {
@@ -33,7 +37,7 @@ export default function RiskEdit() {
   return (
     <div className="risk-edit-page">
       <PageHeader icon={Pencil} title="Editar riesgo" description="Actualiza la información del riesgo y su evaluación inicial." />
-      {loadError ? <ErrorState message={loadError} /> : !risk ? <LoadingState variant="form" /> : <RiskForm initialValues={risk} categories={categories} onSubmit={handleSubmit} submitLabel="Guardar cambios" />}
+      {loadError ? <ErrorState message={loadError} /> : !risk ? <LoadingState variant="form" /> : <RiskForm key={riskId} initialValues={risk} categories={categories} onSubmit={handleSubmit} submitLabel="Guardar cambios" />}
     </div>
   );
 }
