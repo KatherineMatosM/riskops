@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -26,11 +27,15 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
-        return (
-            f"mssql+pyodbc://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-            "?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
-        )
+        return URL.create(
+            "mssql+pyodbc",
+            username=self.DB_USER,
+            password=self.DB_PASSWORD,
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            database=self.DB_NAME,
+            query={"driver": "ODBC Driver 18 for SQL Server", "TrustServerCertificate": "yes"},
+        ).render_as_string(hide_password=False)
 
     @property
     def cors_origins_list(self) -> list[str]:
