@@ -7,6 +7,18 @@ import { getValidationMessage } from "../utils/formValidation";
 import { getErrorMessage, getFieldErrors } from "../utils/apiErrors";
 import { useAuth } from "../hooks/useAuth";
 
+function getLoginErrorMessage(error) {
+  const status = error?.response?.status;
+  if (!error?.response) {
+    return "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.";
+  }
+  if (status === 401) return getErrorMessage(error, "Credenciales inválidas.");
+  if (status === 404) return "El servicio de acceso no está disponible. Inténtalo de nuevo más tarde.";
+  if (status >= 500) return "No se pudo iniciar sesión por un problema del servidor. Inténtalo de nuevo más tarde.";
+  if (status === 422) return getErrorMessage(error, "Revisa los datos e inténtalo de nuevo.");
+  return "No se pudo iniciar sesión. Inténtalo de nuevo.";
+}
+
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -35,7 +47,7 @@ export default function Login() {
       navigate("/dashboard");
     } catch (err) {
       setFieldErrors(getFieldErrors(err, ["email", "password"]));
-      setError(getErrorMessage(err, "Credenciales inválidas."));
+      setError(getLoginErrorMessage(err));
     } finally {
       setLoading(false);
     }

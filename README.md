@@ -32,6 +32,8 @@ La interfaz queda en `http://localhost:3000` y la API en `http://localhost:8000/
 
 La imagen del frontend usa `/api/v1` y Nginx reenvía esas solicitudes al backend. Si configuras otra `REACT_APP_API_URL`, se aplica durante la compilación: reconstruye la imagen para cambiarla. La navegación directa a rutas de React conserva el fallback a `index.html`.
 
+Si `REACT_APP_API_URL` contiene solo el origen, como `http://localhost:8000`, el cliente completa `/api/v1`. Las rutas explícitas, como `/api/v1` o un prefijo de un proxy, se conservan.
+
 Consulta [las pruebas aisladas y los contratos del backend](backend/README.md) para desarrollo y validación.
 
 ## Verificación y pipelines
