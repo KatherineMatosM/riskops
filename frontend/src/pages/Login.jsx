@@ -4,6 +4,7 @@ import { AlertCircle, Loader2, LockKeyhole, LogIn, Mail } from "lucide-react";
 import PasswordInput from "../components/common/PasswordInput";
 import FieldError from "../components/common/FieldError";
 import { getValidationMessage } from "../utils/formValidation";
+import { getErrorMessage, getFieldErrors } from "../utils/apiErrors";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Login() {
@@ -33,7 +34,8 @@ export default function Login() {
       await login(email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Credenciales inválidas.");
+      setFieldErrors(getFieldErrors(err, ["email", "password"]));
+      setError(getErrorMessage(err, "Credenciales inválidas."));
     } finally {
       setLoading(false);
     }

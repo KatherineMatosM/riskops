@@ -36,6 +36,8 @@ class RiskRepository:
         page_size: int,
         sort_by: str,
         sort_dir: str,
+        probability: int | None = None,
+        impact: int | None = None,
     ) -> tuple[list[Risk], int]:
         stmt = select(Risk)
         if category_id is not None:
@@ -46,6 +48,10 @@ class RiskRepository:
             stmt = stmt.where(Risk.risk_level == risk_level)
         if responsible_user_id is not None:
             stmt = stmt.where(Risk.responsible_user_id == responsible_user_id)
+        if probability is not None:
+            stmt = stmt.where(Risk.probability == probability)
+        if impact is not None:
+            stmt = stmt.where(Risk.impact == impact)
         if search:
             like_term = f"%{search}%"
             stmt = stmt.where(or_(Risk.title.ilike(like_term), Risk.description.ilike(like_term)))

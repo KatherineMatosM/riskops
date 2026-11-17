@@ -31,6 +31,7 @@ class RiskService:
         items, total = self.repo.list_filtered(
             category_id=filters.category_id, status=filters.status, risk_level=filters.risk_level,
             responsible_user_id=filters.responsible_user_id, search=filters.search,
+            probability=filters.probability, impact=filters.impact,
             page=filters.page, page_size=filters.page_size, sort_by=filters.sort_by, sort_dir=filters.sort_dir,
         )
         return [RiskOut.model_validate(r) for r in items], total

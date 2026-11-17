@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Layers3, ShieldAlert, ClipboardCheck } from "lucide-react";
 import { useRisks } from "../hooks/useRisks";
 import { useAuth } from "../hooks/useAuth";
@@ -16,7 +16,24 @@ import * as riskCategoryService from "../services/riskCategoryService";
 import { ROLES } from "../utils/constants";
 
 export default function Risks() {
-  const [filters, setFilters] = useState({ page: 1, page_size: 20 });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const readAxis = (name) => /^[1-5]$/.test(searchParams.get(name) || "") ? Number(searchParams.get(name)) : undefined;
+  const probability = readAxis("probability");
+  const impact = readAxis("impact");
+  const matrixKey = `${probability || ""}:${impact || ""}`;
+  const [filterState, setFilterState] = useState({ matrixKey, values: { page: 1, page_size: 20 } });
+  const values = filterState.matrixKey === matrixKey ? filterState.values : { page: 1, page_size: 20 };
+  const filters = { ...values, probability, impact };
+  function setFilters(next) {
+    setFilterState({ matrixKey, values: typeof next === "function" ? next(filters) : next });
+  }
+  function clearMatrixFilter() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("probability");
+    next.delete("impact");
+    setFilterState({ matrixKey: ":", values: { ...values, page: 1 } });
+    setSearchParams(next);
+  }
   const [categories, setCategories] = useState([]);
   const [categoryError, setCategoryError] = useState(null);
   const { risks, pagination, loading, error } = useRisks(filters);
@@ -46,6 +63,10 @@ export default function Risks() {
         <StatCard icon={ClipboardCheck} label="En mitigación en esta página" value={loading ? "—" : risks.filter((risk) => risk.status === "MITIGATION_IN_PROGRESS").length} accent="#15976b" loading={loading} />
       </div>
 
+      {(probability || impact) && <div className="table-toolbar">
+        <span role="status">Filtro de matriz: {[probability && `probabilidad ${probability}`, impact && `impacto ${impact}`].filter(Boolean).join(" · ")}</span>
+        <button type="button" className="link-button" onClick={clearMatrixFilter}>Quitar filtro de matriz</button>
+      </div>}
       <RiskFilters filters={filters} onChange={setFilters} categories={categories} />
       <Alert type="error" message={categoryError} />
 

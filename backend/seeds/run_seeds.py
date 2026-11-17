@@ -1,11 +1,12 @@
 from app.database.session import SessionLocal
-from app.database.init_db import wait_for_db, create_all_tables
+from app.database.init_db import ensure_database_exists, wait_for_db, create_all_tables
 from seeds.seed_roles import seed_roles
 from seeds.seed_admin_user import seed_admin_user
 from seeds.seed_categories import seed_categories
 
 
 def run_all_seeds() -> None:
+    ensure_database_exists()
     wait_for_db()
     create_all_tables()
     db = SessionLocal()

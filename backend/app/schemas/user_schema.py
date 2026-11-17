@@ -14,16 +14,21 @@ class UserOut(BaseModel):
 
 class UserCreateRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=150)
-    email: EmailStr
+    email: EmailStr = Field(max_length=150)
     password: str = Field(min_length=8)
     roles: list[str] = Field(default_factory=lambda: ["VIEWER"])
 
 
 class UserUpdateRequest(BaseModel):
-    full_name: str | None = None
+    full_name: str | None = Field(default=None, min_length=2, max_length=150)
     is_active: bool | None = None
     roles: list[str] | None = None
 
 
 class UserProfileUpdateRequest(BaseModel):
-    full_name: str | None = None
+    full_name: str | None = Field(default=None, min_length=2, max_length=150)
+
+
+class UserOptionOut(BaseModel):
+    id: int
+    full_name: str

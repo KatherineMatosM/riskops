@@ -5,6 +5,7 @@ import PageHeader from "../components/common/PageHeader";
 import PasswordInput from "../components/common/PasswordInput";
 import FieldError from "../components/common/FieldError";
 import { getValidationMessage } from "../utils/formValidation";
+import { getErrorMessage, getFieldErrors } from "../utils/apiErrors";
 import { useAuth } from "../hooks/useAuth";
 import * as userService from "../services/userService";
 import * as authService from "../services/authService";
@@ -33,6 +34,7 @@ export default function Profile() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    setFieldErrors({});
     setSavingProfile(true);
     try {
       const updated = await userService.updateMyProfile({ full_name: fullName });
@@ -40,7 +42,8 @@ export default function Profile() {
       localStorage.setItem("riskops_user", JSON.stringify(updated));
       setMessage("Perfil actualizado correctamente.");
     } catch (err) {
-      setError(err.response?.data?.message || "No se pudo actualizar el perfil.");
+      setFieldErrors(getFieldErrors(err, ["full_name"]));
+      setError(getErrorMessage(err, "No se pudo actualizar el perfil."));
     } finally {
       setSavingProfile(false);
     }
@@ -50,6 +53,7 @@ export default function Profile() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    setFieldErrors({});
     setSavingPassword(true);
     try {
       await authService.changePassword(currentPassword, newPassword);
@@ -57,7 +61,8 @@ export default function Profile() {
       setNewPassword("");
       setMessage("Contraseña actualizada correctamente.");
     } catch (err) {
-      setError(err.response?.data?.message || "No se pudo actualizar la contraseña.");
+      setFieldErrors(getFieldErrors(err, ["current_password", "new_password"]));
+      setError(getErrorMessage(err, "No se pudo actualizar la contraseña."));
     } finally {
       setSavingPassword(false);
     }
@@ -88,7 +93,7 @@ export default function Profile() {
         </label><FieldError id="profile-current-password-error">{fieldErrors.current_password}</FieldError></div>
         <div className="form-field"><label htmlFor="profile-new-password">
           Nueva contraseña
-          <PasswordInput id="profile-new-password" name="new_password" visibilityLabel="nueva contraseña" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); clearFieldError("new_password"); }} autoComplete="new-password" aria-invalid={Boolean(fieldErrors.new_password)} aria-describedby={fieldErrors.new_password ? "profile-new-password-error" : undefined} required />
+          <PasswordInput id="profile-new-password" name="new_password" visibilityLabel="nueva contraseña" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); clearFieldError("new_password"); }} autoComplete="new-password" minLength={8} aria-invalid={Boolean(fieldErrors.new_password)} aria-describedby={fieldErrors.new_password ? "profile-new-password-error" : undefined} required />
         </label><FieldError id="profile-new-password-error">{fieldErrors.new_password}</FieldError></div>
         <div className="security-tip"><Info size={22} /><p><strong>Consejo de seguridad</strong>Elige una contraseña única que combine letras, números y caracteres especiales.</p></div>
         <button type="submit" className="primary-button button-with-icon" disabled={savingPassword}>{savingPassword ? <Loader2 size={18} className="spin" /> : <LockKeyhole size={18} />}{savingPassword ? "Actualizando..." : "Actualizar contraseña"}</button>

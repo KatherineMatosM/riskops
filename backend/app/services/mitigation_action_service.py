@@ -55,7 +55,7 @@ class MitigationActionService:
             action.responsible_user_id = data.responsible_user_id
         if data.due_date is not None:
             action.due_date = data.due_date
-        if data.status is not None:
+        if data.status is not None and data.status != action.status:
             action.status = data.status
             if data.status == "COMPLETED":
                 action.completed_at = datetime.utcnow()

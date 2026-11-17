@@ -18,4 +18,4 @@ class RiskEvaluationOut(BaseModel):
 class RiskEvaluationCreateRequest(BaseModel):
     probability: int = Field(ge=1, le=5)
     impact: int = Field(ge=1, le=5)
-    observations: str | None = None
+    observations: str | None = Field(default=None, max_length=1000)

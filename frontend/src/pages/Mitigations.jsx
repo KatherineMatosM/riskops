@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ClipboardCheck, ListChecks, Plus, ShieldCheck } from "lucide-react";
 import * as riskService from "../services/riskService";
@@ -14,6 +14,7 @@ import MitigationActionList from "../components/mitigations/MitigationActionList
 import LoadingState from "../components/common/LoadingState";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
+import Alert from "../components/common/Alert";
 import PageHeader from "../components/common/PageHeader";
 import { ROLES } from "../utils/constants";
 
@@ -21,40 +22,63 @@ export default function Mitigations() {
   const [searchParams] = useSearchParams();
   const riskId = searchParams.get("risk_id");
   const { hasRole } = useAuth();
+  const canManage = hasRole(ROLES.ADMIN, ROLES.RISK_MANAGER, ROLES.ANALYST);
   const [risk, setRisk] = useState(null);
   const [riskError, setRiskError] = useState(null);
   const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [actions, setActions] = useState([]);
   const [actionsLoading, setActionsLoading] = useState(false);
   const [actionsError, setActionsError] = useState(null);
+  const actionVersion = useRef(0);
   const { plans, loading: plansLoading, error: plansError, refresh } = useMitigations(riskId);
 
   useEffect(() => {
+    let active = true;
+    actionVersion.current += 1;
+    setSelectedPlan(null);
+    setActions([]);
+    setActionsError(null);
+    setActionsLoading(false);
+    setRisk(null);
+    setRiskError(null);
     if (riskId) {
-      setRisk(null);
-      setRiskError(null);
-      riskService.getRisk(riskId).then(setRisk).catch((err) => {
-        setRiskError(err.response?.data?.message || "No se pudo cargar el riesgo.");
+      riskService.getRisk(riskId).then((data) => { if (active) setRisk(data); }).catch((err) => {
+        if (active) setRiskError(err.response?.data?.message || "No se pudo cargar el riesgo.");
       });
     }
-    if (hasRole(ROLES.ADMIN, ROLES.RISK_MANAGER)) {
-      userService.listUsers().then(setUsers).catch(() => setUsers([]));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { active = false; actionVersion.current += 1; };
   }, [riskId]);
 
+  const loadAssignees = useCallback(async () => {
+    if (!canManage) return;
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      setUsers(await userService.listAssignees());
+    } catch (err) {
+      setUsersError(err.response?.data?.message || "No se pudieron cargar los responsables del plan.");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [canManage]);
+
+  useEffect(() => { loadAssignees(); }, [loadAssignees]);
+
   async function handleSelectPlan(plan) {
+    const version = ++actionVersion.current;
     setSelectedPlan(plan);
     setActionsLoading(true);
     setActionsError(null);
     try {
       const data = await mitigationActionService.listActionsByPlan(plan.id);
-      setActions(data);
+      if (actionVersion.current === version) setActions(data);
     } catch (err) {
-      setActionsError(err.response?.data?.message || "No se pudieron cargar las acciones del plan.");
+      if (actionVersion.current === version) setActionsError(err.response?.data?.message || "No se pudieron cargar las acciones del plan.");
     } finally {
-      setActionsLoading(false);
+      if (actionVersion.current === version) setActionsLoading(false);
     }
   }
 
@@ -88,9 +112,11 @@ export default function Mitigations() {
       </Card>
 
       <div className="mitigation-workspace">
-      {hasRole(ROLES.ADMIN, ROLES.RISK_MANAGER, ROLES.ANALYST) && (
+      {canManage && (
         <Card title="Nuevo plan de mitigación" icon={Plus} description="Define el responsable y las fechas del plan.">
-          <MitigationPlanForm users={users} onSubmit={handleCreatePlan} />
+          <Alert type="error" message={usersError} />
+          {usersError && <button type="button" className="secondary-button" onClick={loadAssignees}>Reintentar carga de responsables</button>}
+          <MitigationPlanForm users={users} usersLoading={usersLoading} onSubmit={handleCreatePlan} />
         </Card>
       )}
 

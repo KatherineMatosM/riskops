@@ -2,6 +2,12 @@
 
 API FastAPI con SQLAlchemy. Las rutas de negocio usan el prefijo `/api/v1`.
 
+## Inicialización explícita
+
+Desde el directorio `backend`, `python -m app.database.bootstrap` crea la base de datos si falta, espera la conexión, ejecuta `alembic upgrade head` y carga roles, categorías y administrador. La configuración procede del entorno; el comando no usa `create_all` ni se ejecuta automáticamente al arrancar la API. Está destinado a bases nuevas o ya versionadas por Alembic, sin estampar automáticamente bases anteriores creadas mediante `create_all`.
+
+En Docker usa `docker compose run --rm backend python -m app.database.bootstrap` desde la raíz; el procedimiento completo está en el [README principal](../README.md). El comando histórico `python -m seeds.run_seeds` conserva su creación de tablas por metadata y ahora asegura primero que exista la base; para una instalación nueva con historial de migraciones utiliza bootstrap.
+
 ## Pruebas aisladas
 
 Las fixtures sustituyen la sesión de la aplicación por SQLite en memoria y crean datos independientes para cada prueba. No requieren SQL Server ni una base de datos real.

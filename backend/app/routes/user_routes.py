@@ -16,6 +16,11 @@ def list_users(db: Session = Depends(get_db)):
     return user_controller.list_users(db)
 
 
+@router.get("/assignees", dependencies=[Depends(require_roles(RoleName.ADMIN, RoleName.RISK_MANAGER, RoleName.ANALYST))])
+def list_assignees(db: Session = Depends(get_db)):
+    return user_controller.list_assignees(db)
+
+
 @router.get("/{user_id}", dependencies=[Depends(require_roles(RoleName.ADMIN, RoleName.RISK_MANAGER))])
 def get_user(user_id: int, db: Session = Depends(get_db)):
     return user_controller.get_user(user_id, db)

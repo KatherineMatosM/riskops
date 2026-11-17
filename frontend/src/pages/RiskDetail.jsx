@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useId } from "react";
+import { useState, useEffect, useCallback, useId, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Pencil, ShieldAlert, BarChart3, Crosshair, ArrowLeft, ClipboardCheck, History, Loader2 } from "lucide-react";
 import * as riskService from "../services/riskService";
@@ -16,6 +16,7 @@ import MitigationPlanTable from "../components/mitigations/MitigationPlanTable";
 import RiskLevelBadge from "../components/common/RiskLevelBadge";
 import FieldError from "../components/common/FieldError";
 import { getValidationMessage } from "../utils/formValidation";
+import { getErrorMessage, getFieldErrors } from "../utils/apiErrors";
 import { formatStatus, formatDateTime } from "../utils/formatters";
 import { SCALE_OPTIONS, ROLES } from "../utils/constants";
 
@@ -34,24 +35,36 @@ export default function RiskDetail() {
   const [evaluationSuccess, setEvaluationSuccess] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const evaluationId = useId();
+  const requestVersion = useRef(0);
   const { plans, loading: plansLoading } = useMitigations(riskId);
 
   const loadData = useCallback(async () => {
+    const version = ++requestVersion.current;
     setLoadError(null);
     try {
       const [riskData, evaluationData] = await Promise.all([
         riskService.getRisk(riskId),
         evaluationService.listEvaluations(riskId),
       ]);
+      if (requestVersion.current !== version) return;
       setRisk(riskData);
       setEvaluations(evaluationData);
     } catch {
-      setLoadError("No se pudo cargar el detalle y las evaluaciones del riesgo.");
+      if (requestVersion.current === version) setLoadError("No se pudo cargar el detalle y las evaluaciones del riesgo.");
     }
   }, [riskId]);
 
   useEffect(() => {
+    setRisk(null);
+    setEvaluations([]);
+    setProbability("");
+    setImpact("");
+    setObservations("");
+    setFieldErrors({});
+    setEvaluationError(null);
+    setEvaluationSuccess(null);
     loadData();
+    return () => { requestVersion.current += 1; };
   }, [loadData]);
 
   async function handleEvaluate(e) {
@@ -59,6 +72,7 @@ export default function RiskDetail() {
     setEvaluating(true);
     setEvaluationError(null);
     setEvaluationSuccess(null);
+    setFieldErrors({});
     try {
       await evaluationService.evaluateRisk(riskId, {
         probability: Number(probability), impact: Number(impact), observations: observations || null,
@@ -69,7 +83,8 @@ export default function RiskDetail() {
       setEvaluationSuccess("La evaluación se registró correctamente.");
       loadData();
     } catch (err) {
-      setEvaluationError(err.response?.data?.message || "No se pudo registrar la evaluación. Inténtalo de nuevo.");
+      setFieldErrors(getFieldErrors(err, ["probability", "impact"]));
+      setEvaluationError(getErrorMessage(err, "No se pudo registrar la evaluación. Inténtalo de nuevo."));
     } finally {
       setEvaluating(false);
     }

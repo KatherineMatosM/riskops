@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { AlertCircle, Loader2, Plus } from "lucide-react";
 import FieldError from "../common/FieldError";
+import { getErrorMessage, getFieldErrors } from "../../utils/apiErrors";
 
-export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Crear plan" }) {
+export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Crear plan", usersLoading = false }) {
   const [values, setValues] = useState({
     title: "", description: "", responsible_user_id: "", start_date: "", due_date: "",
   });
@@ -49,6 +50,7 @@ export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Cre
     if (!values.responsible_user_id) nextErrors.responsible_user_id = "Selecciona un responsable.";
     if (!values.start_date) nextErrors.start_date = "Selecciona la fecha de inicio.";
     if (!values.due_date) nextErrors.due_date = "Selecciona la fecha límite.";
+    if (values.start_date && values.due_date && values.due_date < values.start_date) nextErrors.due_date = "La fecha límite debe ser igual o posterior a la fecha de inicio.";
     const invalidFields = Object.keys(nextErrors);
     fieldToFocus.current = invalidFields[0] || null;
     setFieldErrors(nextErrors);
@@ -66,7 +68,10 @@ export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Cre
       });
       setValues({ title: "", description: "", responsible_user_id: "", start_date: "", due_date: "" });
     } catch (err) {
-      setError(err.response?.data?.message || "No se pudo crear el plan de mitigacion.");
+      const serverErrors = getFieldErrors(err, ["title", "responsible_user_id", "start_date", "due_date"]);
+      fieldToFocus.current = Object.keys(serverErrors)[0] || null;
+      setFieldErrors(serverErrors);
+      setError(getErrorMessage(err, "No se pudo crear el plan de mitigación."));
     } finally {
       setSubmitting(false);
     }
@@ -97,8 +102,8 @@ export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Cre
       <div className="form-field">
         <label htmlFor={`${formId}-responsible_user_id`}>
           Responsable
-          <select {...fieldProps("responsible_user_id")} value={values.responsible_user_id} onChange={(e) => update("responsible_user_id", e.target.value)}>
-            <option value="">Seleccione un responsable</option>
+          <select {...fieldProps("responsible_user_id")} disabled={usersLoading} value={values.responsible_user_id} onChange={(e) => update("responsible_user_id", e.target.value)}>
+            <option value="">{usersLoading ? "Cargando responsables..." : "Seleccione un responsable"}</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.full_name}</option>
             ))}
@@ -124,7 +129,7 @@ export default function MitigationPlanForm({ users, onSubmit, submitLabel = "Cre
         </div>
       </div>
 
-      <div className="form-actions"><button type="submit" className="primary-button button-with-icon" disabled={submitting}>{submitting ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}{submitting ? "Guardando..." : submitLabel}</button></div>
+      <div className="form-actions"><button type="submit" className="primary-button button-with-icon" disabled={submitting || usersLoading}>{submitting ? <Loader2 size={18} className="spin" /> : <Plus size={18} />}{submitting ? "Guardando..." : submitLabel}</button></div>
     </form>
   );
 }
