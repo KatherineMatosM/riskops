@@ -143,6 +143,19 @@ async function run() {
   await request(`/risk-categories/${category.id}`, {token: adminToken, method: 'DELETE'});
   await request(`/risk-categories/${otherCategory.id}`, {token: adminToken, method: 'DELETE'});
 
+  const changedPassword = 'Password-CI-updated!2026';
+  const passwordError = await request('/auth/change-password', {token: viewer, method: 'POST', status: 422, body: {
+    current_password: 'Incorrect-password!2026', new_password: changedPassword,
+  }});
+  assert.equal(passwordError.error_code, 'INVALID_CURRENT_PASSWORD');
+  assert.ok(passwordError.errors.some(error => error.field === 'current_password'));
+  assert.equal((await request('/auth/me', {token: viewer})).id, actors.VIEWER.user.id);
+  await request('/auth/change-password', {token: viewer, method: 'POST', body: {
+    current_password: PASSWORD, new_password: changedPassword,
+  }});
+  await request('/auth/login', {method: 'POST', status: 401, body: {email: actors.VIEWER.user.email, password: PASSWORD}});
+  assert.ok((await login(actors.VIEWER.user.email, changedPassword)).user.roles.includes('VIEWER'));
+
   console.log(JSON.stringify({result: 'passed', checks, stack: 'disposable SQL Server + backend + frontend'}));
 }
 

@@ -5,7 +5,8 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.role_repository import RoleRepository
 from app.utils.password_hasher import hash_password, verify_password
 from app.utils.jwt_handler import create_access_token
-from app.utils.exceptions import UnauthorizedError, ConflictError
+from app.utils.exceptions import UnauthorizedError, ConflictError, ValidationAppError
+from app.utils.validation_errors import body_field_error
 from app.schemas.auth_schema import LoginRequest, RegisterRequest, ChangePasswordRequest
 from app.schemas.user_schema import UserOut
 
@@ -45,8 +46,15 @@ class AuthService:
     @atomic
     def change_password(self, user_id: int, data: ChangePasswordRequest) -> None:
         user = self.user_repo.get_by_id(user_id)
-        if not user or not verify_password(data.current_password, user.password_hash):
+        if not user:
             raise UnauthorizedError("La contrasena actual es incorrecta.", "INVALID_CURRENT_PASSWORD")
+        if not verify_password(data.current_password, user.password_hash):
+            message = "La contrasena actual es incorrecta."
+            raise ValidationAppError(
+                message,
+                "INVALID_CURRENT_PASSWORD",
+                errors=[body_field_error("current_password", message, "invalid_password")],
+            )
         user.password_hash = hash_password(data.new_password)
         self.user_repo.update(user)
 

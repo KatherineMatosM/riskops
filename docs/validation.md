@@ -4,7 +4,7 @@
 
 - Backend: autenticación, roles, privacidad de notificaciones, transacciones y rollback, contratos de validación, CRUD, filtros y agregados SQL, configuración, inicialización y seeds.
 - Frontend: restauración de sesión, permisos, notificaciones por usuario, respuestas asíncronas obsoletas, formularios, errores por campo, edición de riesgos y navegación desde la matriz.
-- Integración: imágenes Docker compiladas desde cero, migración Alembic sobre SQL Server, bootstrap repetible, autenticación y operaciones con los distintos roles, reportes y proxy de la API.
+- Integración: imágenes Docker compiladas desde cero, migración Alembic sobre SQL Server, bootstrap repetible, autenticación y operaciones con los distintos roles, reportes y proxy de la API. Una contraseña actual incorrecta muestra un error de campo sin invalidar la sesión; un cambio válido permite entrar con la contraseña nueva y rechaza la anterior.
 - Navegador: inicio de sesión mediante el formulario, persistencia al recargar, 14 rutas a 1440 y 390 píxeles, campos de perfil, reportes, modal, matriz y creación de planes por un analista. Se comprueban el DOM, desbordamiento horizontal, errores de ejecución y respuestas HTTP inesperadas.
 
 Las pruebas integradas crean y borran datos exclusivamente en el proyecto Docker `riskops-ci`. Los scripts exigen autorización explícita mediante `SMOKE_ALLOW_WRITES=true` y restringen los destinos a los puertos de prueba de loopback. El volumen persistente de la aplicación queda fuera de esa configuración.

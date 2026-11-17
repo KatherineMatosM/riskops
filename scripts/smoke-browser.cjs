@@ -7,8 +7,8 @@ const {spawn} = require('node:child_process');
 const API = (process.env.SMOKE_API_URL || 'http://localhost:18000/api/v1').replace(/\/$/, '');
 const WEB = (process.env.SMOKE_WEB_URL || 'http://localhost:13000').replace(/\/$/, '');
 const PASSWORD = 'Password-CI!2026', suffix = Date.now().toString(36);
-const issues = [], active = new Set(), pending = new Map(), riskIds = [], userIds = [];
-let chrome, socket, profile, report, sequence = 0, adminToken, checks = 0, lastNetwork = 0, launchFailed = false;
+const issues = [], active = new Set(), pending = new Map(), requestMethods = new Map(), expectedResponses = [], riskIds = [], userIds = [];
+let chrome, socket, profile, report, sequence = 0, adminToken, checks = 0, passwordValidationRegressions = 0, lastNetwork = 0, launchFailed = false;
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const chromeRunning = () => chrome && chrome.exitCode === null && chrome.signalCode === null;
 
@@ -83,13 +83,20 @@ async function openBrowser() {
     }
     const data = message.params || {};
     if (message.method === 'Runtime.exceptionThrown' || (message.method === 'Runtime.consoleAPICalled' && data.type === 'error')) issues.push('Browser runtime error');
-    if (message.method === 'Network.requestWillBeSent' && localURL(data.request.url)) { active.add(data.requestId); lastNetwork = Date.now(); }
+    if (message.method === 'Network.requestWillBeSent' && localURL(data.request.url)) {
+      active.add(data.requestId); requestMethods.set(data.requestId, data.request.method); lastNetwork = Date.now();
+    }
     if (message.method === 'Network.responseReceived' && data.response.status >= 400) {
       const url = localURL(data.response.url);
-      if (url) issues.push(`HTTP ${data.response.status}: ${url.pathname}`);
+      if (url) {
+        const expected = expectedResponses.find(item => !item.consumed && item.method === requestMethods.get(data.requestId)
+          && item.origin === url.origin && item.pathname === url.pathname && item.status === data.response.status);
+        if (expected) expected.consumed = true;
+        else issues.push(`HTTP ${data.response.status}: ${url.pathname}`);
+      }
     }
     if (message.method === 'Network.loadingFailed' && active.has(data.requestId) && !data.canceled && data.errorText !== 'net::ERR_ABORTED') issues.push('Browser network request failed');
-    if (['Network.loadingFinished', 'Network.loadingFailed'].includes(message.method)) { active.delete(data.requestId); lastNetwork = Date.now(); }
+    if (['Network.loadingFinished', 'Network.loadingFailed'].includes(message.method)) { active.delete(data.requestId); requestMethods.delete(data.requestId); lastNetwork = Date.now(); }
   });
   socket.addEventListener('close', () => {
     for (const command of pending.values()) { clearTimeout(command.timer); command.reject(Error('Chrome CDP closed.')); }
@@ -168,6 +175,23 @@ async function run() {
   }
   await viewport(1440); await go('/profile', '.profile-page');
   assert.equal(await evaluate(() => document.querySelectorAll('.profile-page form').length), 2, 'Profile forms are missing');
+  const tokenBeforeRejectedPassword = await evaluate(() => localStorage.getItem('riskops_token'));
+  assert.ok(tokenBeforeRejectedPassword, 'Password validation requires an authenticated session');
+  const rejectedPasswordResponse = {method: 'POST', origin: new URL(WEB).origin, pathname: '/api/v1/auth/change-password', status: 422, consumed: false};
+  expectedResponses.push(rejectedPasswordResponse);
+  await fill('#profile-current-password', 'Incorrect-current!2026');
+  await fill('#profile-new-password', 'Password-rejected!2026');
+  await evaluate(() => document.querySelectorAll('.profile-page form')[1].requestSubmit());
+  await until(() => rejectedPasswordResponse.consumed || issues.length > 0, 'Incorrect-password validation response');
+  assert.equal(issues.length, 0, issues[0] || 'Unexpected browser errors');
+  assert.equal(rejectedPasswordResponse.consumed, true, 'Expected one POST change-password validation response');
+  await until(() => evaluate(() => document.querySelector('#profile-current-password')?.getAttribute('aria-invalid') === 'true'), 'Incorrect current password shows inline validation');
+  await ready('.profile-page');
+  assert.equal(await evaluate(() => location.pathname), '/profile', 'Incorrect current password navigated away from profile');
+  assert.equal(await evaluate(previous => localStorage.getItem('riskops_token') === previous, tokenBeforeRejectedPassword), true, 'Incorrect current password changed the active session');
+  assert.equal(await evaluate(() => Boolean(document.querySelector('#profile-current-password-error')?.textContent.trim())), true, 'Current-password field error is missing');
+  passwordValidationRegressions++; checks++;
+  await fill('#profile-current-password', ''); await fill('#profile-new-password', '');
   await click('.profile-page .password-toggle');
   await until(() => evaluate(() => document.querySelector('#profile-current-password').type === 'text'), 'Password visibility button');
   await click('.profile-page .password-toggle'); await click('.profile-page form button[type="submit"]');
@@ -204,7 +228,7 @@ async function run() {
   await login(actors.VIEWER.email); await go('/users', '.dashboard-page');
   assert.equal(await evaluate(() => location.pathname), '/dashboard', 'Viewer was not redirected from the user directory');
   assert.equal(issues.length, 0, issues[0] || 'Unexpected browser errors');
-  report = {result: 'passed', checks, routes: routes.length, widths: [1440, 390], runtimeErrors: 0, unexpectedHTTP: 0};
+  report = {result: 'passed', checks, routes: routes.length, widths: [1440, 390], passwordValidationRegressions, expectedHTTP: expectedResponses.filter(item => item.consumed).length, runtimeErrors: 0, unexpectedHTTP: 0};
 }
 
 async function cleanup() {
