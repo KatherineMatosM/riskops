@@ -1,14 +1,22 @@
 name: Backend Tests
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main, develop]
   push:
-    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
@@ -21,13 +29,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          python -m pip check
 
       - name: Run tests
         env:
           APP_ENV: test
-        run: pytest
+        run: python -m pytest -q
