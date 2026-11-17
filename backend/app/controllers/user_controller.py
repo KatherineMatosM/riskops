@@ -9,6 +9,10 @@ def list_users(db: Session):
     return success_response(UserService(db).list_users())
 
 
+def list_assignees(db: Session):
+    return success_response(UserService(db).list_assignees())
+
+
 def get_user(user_id: int, db: Session):
     return success_response(UserService(db).get_user(user_id))
 

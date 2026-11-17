@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.role import Role
@@ -18,6 +18,14 @@ class UserRepository:
 
     def list_all(self) -> list[User]:
         return list(self.db.execute(select(User)).scalars().all())
+
+    def list_assignees(self) -> list[tuple[int, str]]:
+        stmt = (
+            select(User.id, User.full_name)
+            .where(User.is_active == true())
+            .order_by(User.full_name, User.id)
+        )
+        return [(row.id, row.full_name) for row in self.db.execute(stmt).all()]
 
     def create(self, user: User) -> User:
         self.db.add(user)

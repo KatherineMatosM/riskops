@@ -1,11 +1,12 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.database.unit_of_work import atomic
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.repositories.role_repository import RoleRepository
 from app.utils.password_hasher import hash_password
 from app.utils.exceptions import NotFoundError, ConflictError, ValidationAppError
-from app.schemas.user_schema import UserCreateRequest, UserUpdateRequest, UserOut, UserProfileUpdateRequest
+from app.schemas.user_schema import UserCreateRequest, UserUpdateRequest, UserOut, UserProfileUpdateRequest, UserOptionOut
 
 
 class UserService:
@@ -16,6 +17,9 @@ class UserService:
 
     def list_users(self) -> list[UserOut]:
         return [self._to_out(u) for u in self.user_repo.list_all()]
+
+    def list_assignees(self) -> list[UserOptionOut]:
+        return [UserOptionOut(id=user_id, full_name=full_name) for user_id, full_name in self.user_repo.list_assignees()]
 
     def get_user(self, user_id: int) -> UserOut:
         user = self.user_repo.get_by_id(user_id)
@@ -70,7 +74,10 @@ class UserService:
         user = self.user_repo.get_by_id(user_id)
         if not user:
             raise NotFoundError("Usuario no encontrado.", "USER_NOT_FOUND")
-        self.user_repo.delete(user)
+        try:
+            self.user_repo.delete(user)
+        except IntegrityError as error:
+            raise ConflictError("El usuario tiene registros asociados y no puede eliminarse.", "USER_IN_USE") from error
 
     def _to_out(self, user: User) -> UserOut:
         roles = self.user_repo.get_role_names(user.id)

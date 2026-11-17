@@ -14,10 +14,10 @@ class RiskCategoryOut(BaseModel):
 
 class RiskCategoryCreateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=100)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=255)
 
 
 class RiskCategoryUpdateRequest(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    status: str | None = None
+    name: str | None = Field(default=None, min_length=2, max_length=100)
+    description: str | None = Field(default=None, max_length=255)
+    status: str | None = Field(default=None, max_length=20)

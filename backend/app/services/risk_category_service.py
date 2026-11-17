@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.database.unit_of_work import atomic
 from app.models.risk_category import RiskCategory
 from app.repositories.risk_category_repository import RiskCategoryRepository
@@ -25,7 +26,10 @@ class RiskCategoryService:
         if self.repo.get_by_name(data.name):
             raise ConflictError("La categoria ya existe.", "CATEGORY_ALREADY_EXISTS")
         category = RiskCategory(name=data.name, description=data.description, status="ACTIVE")
-        category = self.repo.create(category)
+        try:
+            category = self.repo.create(category)
+        except IntegrityError as error:
+            raise ConflictError("La categoria ya existe.", "CATEGORY_ALREADY_EXISTS") from error
         return RiskCategoryOut.model_validate(category)
 
     @atomic
@@ -34,12 +38,18 @@ class RiskCategoryService:
         if not category:
             raise NotFoundError("Categoria no encontrada.", "CATEGORY_NOT_FOUND")
         if data.name is not None:
+            existing = self.repo.get_by_name(data.name)
+            if existing and existing.id != category.id:
+                raise ConflictError("La categoria ya existe.", "CATEGORY_ALREADY_EXISTS")
             category.name = data.name
-        if data.description is not None:
+        if "description" in data.model_fields_set:
             category.description = data.description
         if data.status is not None:
             category.status = data.status
-        category = self.repo.update(category)
+        try:
+            category = self.repo.update(category)
+        except IntegrityError as error:
+            raise ConflictError("La categoria ya existe.", "CATEGORY_ALREADY_EXISTS") from error
         return RiskCategoryOut.model_validate(category)
 
     @atomic
@@ -47,4 +57,7 @@ class RiskCategoryService:
         category = self.repo.get_by_id(category_id)
         if not category:
             raise NotFoundError("Categoria no encontrada.", "CATEGORY_NOT_FOUND")
-        self.repo.delete(category)
+        try:
+            self.repo.delete(category)
+        except IntegrityError as error:
+            raise ConflictError("La categoría está en uso y no puede eliminarse.", "CAT_IN_USE") from error
